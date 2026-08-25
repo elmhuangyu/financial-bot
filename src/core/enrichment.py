@@ -1,6 +1,9 @@
 """Generic holding enrichment and classification engine without hardcoded tickers."""
 
+import re
+
 import yfinance as yf
+from yfinance.exceptions import YFException
 
 from src.core.models import (
   Account,
@@ -75,16 +78,58 @@ class HoldingEnricher:
       try:
         t = yf.Ticker(yf_sym)
         data = t.info
+        name = data.get("shortName") or data.get("longName") or sym
+        quote_type = (data.get("quoteType") or "EQUITY").upper()
+        category = data.get("category") or ""
+        sector = data.get("sector") or ""
+        industry = data.get("industry") or ""
+        country = data.get("country") or ("Canada" if yf_sym.endswith(".TO") else "US")
+        fund_family = data.get("fundFamily") or ""
+        is_fund = False
+
+        # 1. Primary Structured check via yfinance FundsData API
+        try:
+          fd = t.funds_data
+          overview = getattr(fd, "fund_overview", {}) or {}
+          if overview and isinstance(overview, dict) and overview.get("legalType"):
+            is_fund = True
+            quote_type = (
+              "ETF"
+              if "Exchange Traded" in str(overview.get("legalType", ""))
+              else "MUTUALFUND"
+            )
+            category = overview.get("categoryName") or category
+            fund_family = overview.get("family") or fund_family
+            industry = overview.get("legalType") or industry or "Exchange Traded Fund"
+        except (KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException):
+          pass
+
+        # 2. Strict fallback only if funds_data is unavailable but legal name explicitly specifies ETF/Index Fund
+        if not is_fund and quote_type == "EQUITY" and re.search(
+          r"\b(ETF|Index Fund)\b", name, re.IGNORECASE
+        ):
+          quote_type = "ETF"
+          is_fund = True
+
+        if quote_type == "ETF" and not category and not sector:
+          if any(k in name.lower() for k in ["s&p 500", "s&p500", "spdr portfolio s&p"]):
+            category = "Large Blend"
+            industry = "S&P 500 Index"
+          elif "nasdaq" in name.lower() or "qqq" in name.lower():
+            category = "Large Growth"
+            industry = "NASDAQ 100 Index"
+
         self._yf_cache[sym] = {
-          "name": data.get("shortName") or data.get("longName") or sym,
-          "quoteType": (data.get("quoteType") or "EQUITY").upper(),
-          "category": data.get("category") or "",
-          "sector": data.get("sector") or "",
-          "industry": data.get("industry") or "",
-          "country": data.get("country") or ("Canada" if yf_sym.endswith(".TO") else "US"),
-          "fundFamily": data.get("fundFamily") or "",
+          "name": name,
+          "quoteType": quote_type,
+          "category": category,
+          "sector": sector,
+          "industry": industry,
+          "country": country,
+          "fundFamily": fund_family,
+          "is_fund": is_fund or (quote_type in ["ETF", "MUTUALFUND"]),
         }
-      except KeyError, ValueError, OSError, RuntimeError:
+      except (KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException):
         self._yf_cache[sym] = {
           "name": sym,
           "quoteType": "EQUITY",
@@ -93,6 +138,7 @@ class HoldingEnricher:
           "industry": "Other",
           "country": "US",
           "fundFamily": "",
+          "is_fund": False,
         }
 
     return self._yf_cache
@@ -171,7 +217,7 @@ class HoldingEnricher:
       # Rule: Equity / ETF Regional Classification
       elif country == "Canada" or pos.symbol.endswith(".TO") or curr == "CAD":
         asset_class = "Canadian Equities"
-        if quote_type == "ETF":
+        if info.get("is_fund") or quote_type in ["ETF", "MUTUALFUND"]:
           asset_subclass = "ETF"
           sector = normalize_sector_name(raw_sector or category)
           industry = raw_industry or category or "Canadian ETF"
@@ -181,7 +227,7 @@ class HoldingEnricher:
           industry = raw_industry or "Other"
 
       # Rule: US / International ETF
-      elif quote_type == "ETF":
+      elif info.get("is_fund") or quote_type in ["ETF", "MUTUALFUND"]:
         if any(
           w in category
           for w in ["Foreign", "International", "Emerging", "Europe", "Pacific", "Global"]
@@ -193,9 +239,12 @@ class HoldingEnricher:
         # Subclass determination
         if any(
           b in category for b in ["Large Blend", "Large Growth", "Large Value", "Mid-Cap", "Small"]
+        ) or any(
+          k in asset_name.lower()
+          for k in ["s&p 500", "s&p500", "spdr portfolio s&p", "nasdaq"]
         ):
           asset_subclass = "Broad Index ETF"
-          sector = f"Broad Market / {category}" if category else "Broad Market / Diversified"
+          sector = f"Broad Market / {category}" if category else "Broad Market / Large Blend"
         else:
           asset_subclass = "Sector ETF"
           sector = normalize_sector_name(raw_sector or category)

@@ -109,3 +109,35 @@ def test_enrich_cash_position():
   assert enriched.asset_class == "Cash & Equivalents"
   assert enriched.sector == "Cash"
   assert enriched.market_value_usd == 100.0
+
+
+def test_enrich_etf_with_equity_quote_type():
+  enricher = HoldingEnricher()
+  enricher._yf_cache["SPYM"] = {
+    "name": "State Street SPDR Portfolio S&P 500 ETF",
+    "quoteType": "ETF",
+    "category": "Large Blend",
+    "sector": "",
+    "industry": "S&P 500 Index",
+    "country": "US",
+    "fundFamily": "SPDR",
+  }
+
+  pos = Position(
+    source="IBKR",
+    account_id="ACC1",
+    symbol="SPYM",
+    asset_category="Stocks",
+    currency="USD",
+    quantity=100,
+    cost_basis=8000.0,
+    close_price=90.0,
+    market_value=9000.0,
+    unrealized_pl=1000.0,
+  )
+
+  enriched = enricher.enrich_position(pos, cad_to_usd=0.75)
+  assert enriched.asset_class == "US Equities"
+  assert enriched.asset_subclass == "Broad Index ETF"
+  assert enriched.sector == "Broad Market / Large Blend"
+  assert enriched.industry == "S&P 500 Index"
