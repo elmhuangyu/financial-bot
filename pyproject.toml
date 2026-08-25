@@ -1,0 +1,27 @@
+[project]
+name = "financial-bot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+indent-width = 2
+target-version = "py314"
+exclude = [
+  "data",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
