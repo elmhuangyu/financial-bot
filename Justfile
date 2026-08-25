@@ -22,7 +22,7 @@ build:
 
 # Test
 test:
-    uv run pytest
+    uv run python -m pytest
 
 # Archive current data directory and recreate a clean data directory
 archive:

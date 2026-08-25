@@ -13,7 +13,8 @@ The Asset Class & Sector Allocation Report provides a strategic, portfolio-wide 
 2. **True Economic Sector Look-Through**: Decompose broad index ETFs and thematic funds to report actual underlying economic sector exposures across the 11 GICS sectors.
 3. **Aggregate Single-Stock Concentration**: Penetrate ETF holdings to compute true consolidated single-stock exposures (combining direct individual equity holdings and indirect ETF constituents).
 4. **Tax & Ownership Distribution**: Analyze capital distribution across tax categories (`Taxable`, `Tax-Free`, `Tax-Deferred`) and family/individual account owners.
-5. **Deliverable Production**: Generate a structured, publication-grade Markdown report at `data/output/asset_allocation_report.md`.
+5. **Visual Allocation Pie Charts**: Render Mermaid pie chart visualizations for every categorical allocation dimension (Asset Class, Sector Look-Through, Tax Treatment, Account Ownership).
+6. **Deliverable Production**: Generate a structured, publication-grade Markdown report at `data/output/asset_allocation_report.md`.
 
 ---
 
@@ -61,9 +62,9 @@ ETFs and mutual funds represent bundled baskets of underlying securities. Direct
   - Total Tracked Cost Basis: $\text{TotalCostUSD} = \sum \text{cost\_basis\_usd}$
   - Total Unrealized Gain/Loss: $\text{TotalPnLUSD} = \sum \text{unrealized\_pl\_usd}$
   - Total Return on Cost: $\text{PnLPct} = \frac{\text{TotalPnLUSD}}{\text{TotalCostUSD}} \times 100\%$
-- **Asset Class Roll-Up**: Group positions by `asset_class`. Compute total USD, CAD, percentage share, and list primary components.
-- **Tax Structure Roll-Up**: Group positions by `tax_treatment` (`Taxable`, `Tax-Free`, `Tax-Deferred`).
-- **Account Ownership Roll-Up**: Group positions by `owner`.
+- **Asset Class Roll-Up & Pie Chart**: Group positions by `asset_class`. Compute total USD, CAD, percentage share, list primary components, and generate a companion Mermaid pie chart (`pie title Asset Class Allocation`).
+- **Tax Structure Roll-Up & Pie Chart**: Group positions by `tax_treatment` (`Taxable`, `Tax-Free`, `Tax-Deferred`), compute total USD, CAD, percentage share, and generate a companion Mermaid pie chart (`pie title Allocation by Tax Treatment`).
+- **Account Ownership Roll-Up & Pie Chart**: Group positions by `owner`, compute total USD, CAD, percentage share, and generate a companion Mermaid pie chart (`pie title Allocation by Account Owner`).
 
 #### B. Economic Sector Look-Through Algorithm
 For each GICS sector $S \in \{\text{Technology}, \text{Communication Services}, \dots, \text{Basic Materials}\}$:
@@ -105,7 +106,7 @@ graph TD
 
 1. **Load Normalized Dataset**: Read `data/output/normalized_holdings.csv` (or execute normalization pipeline).
 2. **Execute Look-Through Engine**: Use `src.core.lookthrough.ETFLookThroughEngine` to decompose fund constituents dynamically.
-3. **Perform Aggregations**: Compute totals, asset class percentages, look-through sector percentages, top 15 aggregate stock exposures, top direct positions, tax distribution, and ownership distribution.
+3. **Perform Aggregations & Pie Chart Generation**: Compute totals, asset class percentages, look-through sector percentages, top 15 aggregate stock exposures, top direct positions, tax distribution, and ownership distribution. Generate companion Mermaid pie charts for each allocation category.
 4. **Synthesize Key Insights**: Quantify mega-cap concentration differences, dominant economic sectors, and defensive cushions.
 5. **Render Markdown Report**: Write formatted report to `data/output/asset_allocation_report.md`.
 
@@ -200,11 +201,23 @@ pie title True Economic Sector Allocation (Look-Through)
 <!-- Dynamically iterate Tax Treatments (Taxable, Tax-Deferred, Tax-Free) -->
 | **<Tax_Status>** | <Accounts_Summary> | $<Val_USD> | $<Val_CAD> | **<Pct>%** |
 
+```mermaid
+pie title Allocation by Tax Treatment
+    <!-- Dynamically iterate Tax Treatments (Taxable, Tax-Deferred, Tax-Free) with Pct >= 0.5% -->
+    "<Tax_Status>" : <Pct>
+```
+
 ### 6.2 By Owner
 | Owner | Market Value (USD) | Market Value (CAD) | % of Portfolio |
 | :--- | :--- | :--- | :--- |
 <!-- Dynamically iterate Account Owners -->
 | **<Owner_Name>** | $<Val_USD> | $<Val_CAD> | **<Pct>%** |
+
+```mermaid
+pie title Allocation by Account Owner
+    <!-- Dynamically iterate Account Owners with Pct >= 0.5% -->
+    "<Owner_Name>" : <Pct>
+```
 
 ---
 
