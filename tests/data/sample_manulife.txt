@@ -1,0 +1,24 @@
+Investment details
+
+Current value:    $150,000.00
+
+Breakdown by investments
+
+Image icon 8322 - ML BR U.S. Equity Index i4
+Contribution category	Number	Unit
+value	Current
+value ($)
+
+Member required	50.00000	100.000	5,000.00
+Plan Sponsor required	950.00000	100.000	95,000.00
+
+  TOTAL	$100,000.00
+
+Image icon 8321 - ML BR Intl Equity Index 5i
+Contribution category	Number	Unit
+value	Current
+value ($)
+
+Plan Sponsor required	1,000.00000	50.000	50,000.00
+
+  TOTAL	$50,000.00

@@ -28,47 +28,72 @@ financial-bot/
 ├── README.md             # Project overview
 ├── pyproject.toml        # uv project configuration and dependencies
 ├── Justfile              # Common commands (fmt, lint, test, build, archive)
-├── reports/              # Report specifications: templates, required inputs & SOPs
-├── data/                 # Ignored by git; stores user data
-│   ├── input/            # Raw statement files (CSV, PDF, TXT, Excel)
-│   ├── tmp/              # Intermediate data, parsed JSON/Parquet caches
-│   └── output/           # Generated financial reports (Markdown, charts, CSVs)
+├── reports/              # Report templates & generation instructions / SOPs (NO user output data)
+│   └── <report_type>/    # Dedicated folder for each report type (e.g., reports/asset_allocation/)
+│       └── SPEC.md       # Report specification (schema, dynamic enrichment guide, template, SOP)
+├── data/                 # Ignored by git; stores user data and session workspace
+│   ├── input/            # Raw statement files (CSV, PDF, TXT, Excel) - READ ONLY
+│   ├── tmp/              # Intermediate data, caches, AND one-off / ad-hoc analysis scripts
+│   └── output/           # ALL generated outputs & deliverables (Markdown reports, charts, CSVs)
 ├── src/
-│   ├── core/             # Permanent, reusable modules (MUST have unit tests)
-│   └── tmp/              # Default scratchpad for new / ad-hoc analysis scripts
+│   └── core/             # Permanent, reusable modules ONLY (MUST have unit tests, ZERO PII)
 ├── tests/                # Unit tests for src/core/ (verified via `just test`)
 └── archived/             # Historical data or deprecated artifacts (git-ignored)
 ```
 
 ### Data Flow & Code Placement Rules:
-- **`data/input/` (Read-Only)**: Never modify or delete original raw input files without explicit user instruction.
-- **`src/tmp/` & `data/tmp/` (Default Scratchpad)**:
-  - **Rule: When in doubt, default to `src/tmp/`.** If you are unsure whether a piece of code is one-off or will be reused, write it in `src/tmp/` first.
-  - If you later discover that logic in `src/tmp/` is being reused across multiple tasks, promote and refactor it into `src/core/`.
-- **`src/core/` (Permanent Library)**:
+- **`data/input/` (Read-Only & Ephemeral)**: Never modify or delete original raw input files without explicit user instruction. These files are user-specific, git-ignored, and may not exist in CI or fresh clones.
+- **`data/tmp/` (Default Scratchpad & One-Off Scripts)**:
+  - **Rule: When in doubt, default to `data/tmp/`.** All one-off analysis scripts, statement parsers under experimentation, intermediate caches, and run-specific scripts MUST be placed in `data/tmp/`.
+  - **Zero Git Leakage**: Because `data/` is strictly `.gitignore`d, putting one-off runner scripts in `data/tmp/` guarantees zero PII leaks into git history.
+  - If you later discover that logic in `data/tmp/` is generic and reusable across multiple tasks, promote and refactor it into `src/core/`.
+- **`src/core/` (Permanent Library - Zero Hardcoded Data & Zero PII)**:
   - Stores generalized, reusable components (parsers, mathematical formulas, data models).
-  - **Mandatory Requirement: Must have unit tests.** Any code placed in or promoted to `src/core/` must have corresponding test coverage under `tests/` and pass `just test`.
-- **`reports/` (Report Definitions & Templates)**:
-  - Stores specification files for each supported report type, detailing:
-    1. The markdown report template.
-    2. The required input data sources & parameters.
-    3. The step-by-step generation procedure (SOP).
-- **`data/output/` (Deliverables)**: Save finalized Markdown reports, summary tables, and exports here.
+  - **Zero Hardcoding Rule**: NEVER hardcode ticker-specific lists or ad-hoc data dictionaries (e.g. `{"ETHA": "Digital Assets"}`) in `src/core/`. Core must be 100% generic and rule-driven from API metadata. Any private/unlisted fund mappings must be passed in via external parameters or dependency injection (`custom_overrides`).
+  - **Mandatory Unit Tests**: Any code placed in or promoted to `src/core/` must have corresponding test coverage under `tests/` and pass `just test`.
+- **`tests/` & `tests/data/` (Testing Hygiene & Zero-PII Policy)**:
+  - **No `data/input/` Dependency**: Tests MUST NEVER read from or depend on `data/input/`.
+  - **Dedicated Fixtures**: Tests requiring file inputs must use synthetic, de-identified (de-id) fixture files placed in `tests/data/` (e.g. `tests/data/sample_ibkr.csv`) or in-memory streams.
+  - **Zero PII**: Never leak real user names, real account numbers, or personal identifiers into test files, core source code, or report specifications.
+- **`reports/` (Report Specifications & Templates ONLY)**:
+  - **Folder Structure**: Every report type has a dedicated subdirectory with a `SPEC.md` file (e.g., `reports/asset_allocation/SPEC.md`, `reports/retirement_planning/SPEC.md`).
+  - **Purpose**: Defines *HOW* to produce a report type and teaches the AI how to discover and enrich required data.
+  - **Contents of `SPEC.md`**:
+    1. Report Objective & Executive Summary Scope.
+    2. Input Data Contracts & Target Schema (generic contracts, never hardcoded to specific statement file names).
+    3. Dynamic Metadata Enrichment & Discovery Guide (how to fetch ticker metadata, unlisted retirement funds, crypto, FX rates, and look-through constituent weights dynamically via APIs/search rather than static lists).
+    4. Taxonomy & Classification Standards (Asset Classes, GICS sectors, tax categories).
+    5. Step-by-step Standard Operating Procedure (SOP).
+    6. Markdown report template skeleton.
+  - **Rules for SPECs**:
+    - **Zero Hardcoded Tickers/Files**: NEVER hardcode user-specific ticker lists or bind to specific file names (e.g. `IBKR.csv`). Teach dynamic resolution principles instead.
+    - **Zero Output Data**: NEVER write generated outputs, computed data, or specific user deliverables into `reports/`.
+- **`data/output/` (All Generated Outputs & Deliverables)**:
+  - **Purpose**: The destination for *ALL* generated financial outputs.
+  - **Contents**: Finalized Markdown reports (e.g., `data/output/asset_allocation_report.md`), summary tables, charts, and normalized CSV exports (e.g., `data/output/normalized_holdings.csv`).
 
 ---
 
-## 4. Report Handling & Unknown Report Protocol
+## 4. Report Discovery & Unknown Report Protocol
 
-Before generating any report, consult `reports/` to check if a specification or template already exists for the requested report type.
+### 4.1 Discovering Existing Report Specs:
+Before generating any report, check the `reports/` directory to see if a matching report specification exists:
+- Look for `reports/<report_type>/SPEC.md` (e.g., `reports/asset_allocation/SPEC.md`).
+- Read the specification to understand the target data schema, dynamic enrichment guide, SOP, and markdown report skeleton.
 
-### Handling New / Unrecognized Report Types:
-If the user requests a report type that does **not** yet have a definition in `reports/` (or has not been handled before):
+### 4.2 Handling New / Unrecognized Report Types:
+If the user requests a report type that does **not** yet have a definition under `reports/<report_type>/SPEC.md`:
 1. **Do NOT guess or produce an arbitrary structure.**
 2. **Clarify with the user first**: Ask the user what their expected report structure looks like, including:
    - What key metrics, sections, and tables they want to see.
    - What time horizons, scenarios, or breakdown dimensions are required.
    - What source data or statements should be referenced.
-3. Once aligned with the user, create a new specification document in `reports/` (e.g., `reports/<report_name>.md`) for future reuse, then proceed with the analysis.
+3. Once aligned with the user, create a new specification folder and document: `reports/<report_type>/SPEC.md`.
+4. Ensure the new `SPEC.md` strictly adheres to SPEC design principles:
+   - Contains the template, required input data schema, dynamic discovery/enrichment methodology, and SOP.
+   - **No hardcoded tickers or specific file names**: Teach the AI how to dynamically find and resolve data rather than hardcoding static dictionaries.
+   - Contains zero user output data or PII.
+5. Proceed with script creation in `data/tmp/` and report generation in `data/output/`.
 
 ---
 
@@ -76,10 +101,9 @@ If the user requests a report type that does **not** yet have a definition in `r
 
 - **Python Environment**: Managed via `uv` (requires Python `>= 3.14`).
 - **Running Scripts**:
-  - Run ad-hoc scripts: `uv run python src/tmp/<script_name>.py`
+  - Run ad-hoc scripts: `uv run python data/tmp/<script_name>.py`
   - Adding permanent dependencies: `uv add <package>`
 - **Code Style & Quality**:
-  - Formatter & Linter: `ruff` (`indent-width = 2`, `line-length = 100`, `double` quotes).
   - Format code: `just fmt` (or `uvx ruff format`)
   - Lint code: `just lint` (or `uvx ruff check`)
   - Run tests: `just test` (or `uv run pytest`)
@@ -92,7 +116,7 @@ When given a user financial task, follow this 5-step lifecycle:
 
 ```mermaid
 graph TD
-    A["1. Inspect Input Data & Check reports/"] --> B["2. Write Ad-hoc Script in src/tmp/"]
+    A["1. Inspect Input Data & Check reports/"] --> B["2. Write Ad-hoc Script in data/tmp/"]
     B --> C["3. Execute & Verify (uv run)"]
     C --> D["4. Generate Structured Report in data/output/"]
     D --> E["5. Promote Reusable Logic to src/core/ + Write Tests"]
@@ -100,23 +124,24 @@ graph TD
 
 ### Step 1: Inspect & Understand
 - Check `data/input/` for statement formats, headers, currencies, account types (e.g., TFSA, RRSP, 401(k), taxable accounts, cash).
-- Check `reports/` for matching report templates; if missing, ask the user to clarify expectations.
+- Check `reports/<report_type>/SPEC.md` for matching report specifications and instructions; if missing, ask the user to clarify expectations.
 - Identify missing parameters (e.g., inflation rate assumption, retirement age, target annual spending). If critical information is missing, ask the user before guessing.
 
-### Step 2: Write Ad-hoc Processing Script in `src/tmp/`
-- Default new code to `src/tmp/` (e.g., `src/tmp/parse_ibkr_holdings.py`, `src/tmp/retirement_sim.py`).
+### Step 2: Write Ad-hoc Processing Script in `data/tmp/`
+- Default new code to `data/tmp/` (e.g., `data/tmp/parse_ibkr_holdings.py`, `data/tmp/retirement_sim.py`).
 - Implement clean parsing, currency normalization, and explicit mathematical formulas.
 
 ### Step 3: Execute & Sanity Check
 - Execute the script using `uv run`.
 - Inspect the output for anomalies (e.g., negative balances where unexpected, duplicate transactions, currency mismatches).
 
-### Step 4: Report Generation
-- Create a comprehensive Markdown report in `data/output/` (e.g., `data/output/2026_retirement_analysis.md`) conforming to the template in `reports/`.
+### Step 4: Report Generation (Output to data/output/)
+- Create a comprehensive Markdown report in `data/output/` (e.g., `data/output/asset_allocation_report.md`) strictly following the template and generation instructions in `reports/<report_type>/SPEC.md`.
+- Save all raw normalized tables and CSVs to `data/output/` (e.g., `data/output/normalized_holdings.csv`).
 - Present clear summary tables, charts (using Mermaid if helpful), scenarios (Conservative / Baseline / Optimistic), and key takeaways.
 
 ### Step 5: Code Promotion & Testing
-- If code in `src/tmp/` is found to be reusable, refactor it into `src/core/` (e.g., `src/core/parsers/ibkr.py`).
+- If code in `data/tmp/` is found to be reusable, refactor it into `src/core/` (e.g., `src/core/parsers/ibkr.py`).
 - **Write comprehensive unit tests** under `tests/` for any new `src/core/` code.
 - Run `just test`, `just lint`, and `just fmt` to ensure quality.
 
@@ -127,8 +152,9 @@ graph TD
 When producing reports in `data/output/` and presenting to the user, ensure the following structure is respected (unless a specialized template in `reports/` specifies otherwise):
 
 1. **Executive Summary**: High-level overview of findings, total net worth, savings rate, or retirement readiness.
-2. **Current Financial Position**:
+2. **Current Financial Position & Allocations**:
    - Asset breakdown (Equities, Fixed Income, Cash, Real Estate, Retirement Accounts).
+   - **ETF Look-Through Analysis**: For portfolios holding ETFs or index funds, always perform constituent look-through to report *true economic sector distributions* and *aggregate single-stock concentration* (direct + indirect).
    - Liability breakdown (Mortgages, Loans, Credit).
    - Net Worth calculation.
 3. **Analysis & Projections**:

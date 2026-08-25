@@ -1,0 +1,40 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,BrokerName,Interactive Brokers Canada Inc.
+Statement,Data,BrokerAddress,"1800 McGill College Avenue, Suite 2106, Montreal, Quebec, Canada  H3A 3J6"
+Statement,Data,Title,Accounts Summary
+Statement,Data,Period,"August 21, 2026"
+Statement,Data,WhenGenerated,"2026-08-24, 22:28:26 EDT"
+Account Information,Header,Name,Master Account,Accounts Included,Base Currency
+Account Information,Data,John Doe,F1000000,"F1000000, U1000001, U1000002, U1000003",USD
+NAV Summary,Header,Currency,Name,Account,Account Type,Starting Net Asset Value,Ending Net Asset Value,Time Weighted Rate of Return
+NAV Summary,Data,USD,John Doe,F1000000,Advisor Master,100.0,100.0,0%
+NAV Summary,Data,USD,John Doe,U1000001/tsfa,Advisor Client,100000.0,105000.0,5.0%
+NAV Summary,Data,USD,John Doe,U1000002/rrsp,Advisor Client,200000.0,210000.0,5.0%
+NAV Summary,Data,USD,John Doe and Jane Doe,U1000003/joint,Advisor Client,50000.0,52000.0,4.0%
+NAV Summary,Data,Total,,,,350100.0,367100.0,
+Profit and Loss Summary,Header,Currency,Name,Account,MTM,Realized,Unrealized
+Profit and Loss Summary,Data,USD,John Doe,F1000000,0,0,0
+Profit and Loss Summary,Data,USD,John Doe,U1000001/tsfa,5000.0,0,25000.0
+Profit and Loss Summary,Data,USD,John Doe,U1000002/rrsp,10000.0,0,45000.0
+Profit and Loss Summary,Data,USD,John Doe and Jane Doe,U1000003/joint,2000.0,0,10000.0
+Profit and Loss Summary,Data,Total,,,17000.0,0,80000.0
+Open Positions,Header,Asset Category,Currency,Symbol,Account,Quantity,Cost Basis,Close Price,Value,Unrealized P/L
+Open Positions,Data,Stocks,CAD,CCO,,50,5000.0,120.0,6000.0,1000.0
+Open Positions,Data,Stocks,CAD,CCO,U1000001/tsfa,50,5000.0,120.0,6000.0,1000.0
+Open Positions,Data,Stocks,CAD,ENB,,100,4000.0,50.0,5000.0,1000.0
+Open Positions,Data,Stocks,CAD,ENB,U1000003/joint,100,4000.0,50.0,5000.0,1000.0
+Open Positions,Data,Total,,,,,9000.0,,11000.0,2000.0
+Open Positions,Data,Total in USD,,,,,6750.0,,8250.0,1500.0
+Open Positions,Data,Stocks,USD,AAPL,,200,20000.0,150.0,30000.0,10000.0
+Open Positions,Data,Stocks,USD,AAPL,U1000001/tsfa,100,10000.0,150.0,15000.0,5000.0
+Open Positions,Data,Stocks,USD,AAPL,U1000002/rrsp,100,10000.0,150.0,15000.0,5000.0
+Open Positions,Data,Stocks,USD,MSFT,,100,25000.0,350.0,35000.0,10000.0
+Open Positions,Data,Stocks,USD,MSFT,U1000002/rrsp,100,25000.0,350.0,35000.0,10000.0
+Open Positions,Data,Stocks,USD,NVDA,,150,15000.0,200.0,30000.0,15000.0
+Open Positions,Data,Stocks,USD,NVDA,U1000001/tsfa,150,15000.0,200.0,30000.0,15000.0
+Open Positions,Data,Stocks,USD,SPYM,,500,40000.0,100.0,50000.0,10000.0
+Open Positions,Data,Stocks,USD,SPYM,U1000002/rrsp,500,40000.0,100.0,50000.0,10000.0
+Open Positions,Data,Total,,,,,100000.0,,145000.0,45000.0
+Cash and Position Activity,Header,Currency,Name,Account,Dividends,Interest,Fees,Deposits,Withdrawals,Position Transfer In,Position Transfer Out
+Cash and Position Activity,Data,USD,John Doe,F1000000,0,0,0,0,0,0,0
+Cash and Position Activity,Data,Total,,,0,0,0,0,0,0,0
