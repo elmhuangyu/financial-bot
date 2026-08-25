@@ -56,15 +56,14 @@ financial-bot/
   - **Dedicated Fixtures**: Tests requiring file inputs must use synthetic, de-identified (de-id) fixture files placed in `tests/data/` (e.g. `tests/data/sample_ibkr.csv`) or in-memory streams.
   - **Zero PII**: Never leak real user names, real account numbers, or personal identifiers into test files, core source code, or report specifications.
 - **`reports/` (Report Specifications & Templates ONLY)**:
+  - **Master Template**: [`reports/TEMPLATE_SPEC.md`](reports/TEMPLATE_SPEC.md) serves as the canonical blueprint for creating all report specifications.
   - **Folder Structure**: Every report type has a dedicated subdirectory with a `SPEC.md` file (e.g., `reports/asset_allocation/SPEC.md`, `reports/retirement_planning/SPEC.md`).
-  - **Purpose**: Defines *HOW* to produce a report type and teaches the AI how to discover and enrich required data.
-  - **Contents of `SPEC.md`**:
-    1. Report Objective & Executive Summary Scope.
-    2. Input Data Contracts & Target Schema (generic contracts, never hardcoded to specific statement file names).
-    3. Dynamic Metadata Enrichment & Discovery Guide (how to fetch ticker metadata, unlisted retirement funds, crypto, FX rates, and look-through constituent weights dynamically via APIs/search rather than static lists).
-    4. Taxonomy & Classification Standards (Asset Classes, GICS sectors, tax categories).
-    5. Step-by-step Standard Operating Procedure (SOP).
-    6. Markdown report template skeleton.
+  - **Purpose**: Defines *HOW* to produce a report type, what the user must supply, and how the AI processes and enriches data.
+  - **Standard Architecture of `SPEC.md`**:
+    1. **Objective & Scope**: Defines business purpose, targeted use cases, and deliverable artifacts.
+    2. **Required Input**: What the user must provide (statement types in `data/input/`, account coverage, financial profile parameters, custom asset/fund overrides). Never binds to rigid internal column names or intermediate scripts.
+    3. **Process**: The complete system execution workflow (multi-source statement parsing, dynamic market data & ETF look-through enrichment via APIs/search, deterministic mathematical formulas & taxonomies, account NAV reconciliation, and step-by-step SOP).
+    4. **Output Template**: Publication-grade Markdown report skeleton for `data/output/<report_name>_report.md` and target CSV/JSON data deliverables.
   - **Rules for SPECs**:
     - **Zero Hardcoded Tickers/Files**: NEVER hardcode user-specific ticker lists or bind to specific file names (e.g. `IBKR.csv`). Teach dynamic resolution principles instead.
     - **Zero Output Data**: NEVER write generated outputs, computed data, or specific user deliverables into `reports/`.
@@ -79,19 +78,20 @@ financial-bot/
 ### 4.1 Discovering Existing Report Specs:
 Before generating any report, check the `reports/` directory to see if a matching report specification exists:
 - Look for `reports/<report_type>/SPEC.md` (e.g., `reports/asset_allocation/SPEC.md`).
-- Read the specification to understand the target data schema, dynamic enrichment guide, SOP, and markdown report skeleton.
+- Read the specification to understand the user inputs, processing workflow (parsers, dynamic enrichment, mathematical formulas, SOP), and markdown report skeleton.
 
 ### 4.2 Handling New / Unrecognized Report Types:
 If the user requests a report type that does **not** yet have a definition under `reports/<report_type>/SPEC.md`:
 1. **Do NOT guess or produce an arbitrary structure.**
 2. **Clarify with the user first**: Ask the user what their expected report structure looks like, including:
-   - What key metrics, sections, and tables they want to see.
-   - What time horizons, scenarios, or breakdown dimensions are required.
-   - What source data or statements should be referenced.
-3. Once aligned with the user, create a new specification folder and document: `reports/<report_type>/SPEC.md`.
+   - What business objective and scope this report serves (**Objective & Scope**).
+   - What source statements, documents, and business parameters they will provide (**Required Input**).
+   - What core metrics, formulas, scenarios, and breakdowns are needed (**Process**).
+   - What final report structure and tables they want delivered (**Output Template**).
+3. Once aligned with the user, create a new specification: `reports/<report_type>/SPEC.md` modeled directly after [`reports/TEMPLATE_SPEC.md`](reports/TEMPLATE_SPEC.md).
 4. Ensure the new `SPEC.md` strictly adheres to SPEC design principles:
-   - Contains the template, required input data schema, dynamic discovery/enrichment methodology, and SOP.
-   - **No hardcoded tickers or specific file names**: Teach the AI how to dynamically find and resolve data rather than hardcoding static dictionaries.
+   - Strictly organized into: **Objective & Scope**, **Required Input**, **Process**, and **Output Template**.
+   - **No hardcoded tickers or specific file names**: Teach dynamic discovery and API enrichment rather than static dictionaries.
    - Contains zero user output data or PII.
 5. Proceed with script creation in `data/tmp/` and report generation in `data/output/`.
 

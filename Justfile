@@ -6,9 +6,15 @@ default:
 fmt:
     uvx ruff format
 
-# Lint with ruff
+# Lint with ruff and verify no hardcoded absolute paths
 lint:
     uvx ruff check
+    @echo "Checking for hardcoded absolute paths or file:// links..."
+    @if git grep --untracked -nE 'file:///|/home/[a-zA-Z0-9_.-]+|/Users/[a-zA-Z0-9_.-]+' -- ':!Justfile' >/dev/null 2>&1; then \
+        echo "ERROR: Hardcoded absolute paths or file:// URIs detected:"; \
+        git grep --untracked -nE 'file:///|/home/[a-zA-Z0-9_.-]+|/Users/[a-zA-Z0-9_.-]+' -- ':!Justfile'; \
+        exit 1; \
+    fi
 
 # Build
 build:

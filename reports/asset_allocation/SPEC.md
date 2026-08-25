@@ -1,6 +1,6 @@
 # Portfolio Asset Class & Sector Allocation Report Specification
 
-This specification defines the input contract, ETF constituent look-through decomposition methodology, multi-dimensional aggregation rules, standard operating procedure (SOP), and report template for generating the Asset Class and Sector Allocation Report within `financial-bot`.
+This specification defines the objective and scope, user-provided inputs, ETF constituent look-through decomposition methodology, multi-dimensional aggregation rules, standard operating procedure (SOP), and deliverable report template for generating the Asset Class and Sector Allocation Report within `financial-bot`.
 
 ---
 
@@ -17,31 +17,55 @@ The Asset Class & Sector Allocation Report provides a strategic, portfolio-wide 
 
 ---
 
-## 2. Input Data Contract
+## 2. Required Input
 
-The Asset Allocation Report consumes the normalized holding dataset produced by the normalization pipeline (see `reports/portfolio_normalization/SPEC.md`).
+Defines what the **user** must provide to the system prior to generating the allocation report.
 
-- **Primary Input File**: `data/output/normalized_holdings.csv` (or in-memory list of `EnrichedHolding` objects).
-- **Required Columns**:
-  - `source`, `account_id`, `account_label`, `owner`, `account_type`, `tax_treatment`
-  - `symbol`, `asset_name`, `asset_class`, `asset_subclass`, `sector`, `industry`, `currency`
-  - `quantity`, `close_price_local`, `cost_basis_local`, `market_value_local`, `unrealized_pl_local`
-  - `market_value_usd`, `cost_basis_usd`, `unrealized_pl_usd`
-  - `market_value_cad`, `cost_basis_cad`, `unrealized_pl_cad`
+### 2.1 Source Statements & Data Files (in `data/input/`)
+- **Statement Types**: Brokerage statements, account export CSVs, institutional retirement plan summaries, or crypto wallet exports.
+- **Coverage**: All active accounts and cash holdings to be included in the total net worth calculation.
+- **Upstream Dependency**: Alternatively, the consolidated holding dataset `data/output/normalized_holdings.csv` produced by the portfolio normalization pipeline (see `reports/portfolio_normalization/SPEC.md`).
+- *Note: Statement formats vary across institutions; ingestion parsers in Process handle normalization into a uniform schema.*
+
+### 2.2 User Parameters & Assumptions
+- **Base Currencies**: Preferred dual reporting currencies (defaults to `USD` and `CAD`).
+- **Custom Fund / Asset Overrides**: Descriptions or benchmark proxies for private / unlisted employer funds (e.g., matching an internal fund code to the S&P 500 or MSCI EAFE index).
 
 ---
 
-## 3. ETF Look-Through & Decomposition Mathematics
+## 3. Process
 
-ETFs and mutual funds represent bundled baskets of underlying securities. Direct asset reporting creates opacity because an investor holding multiple ETFs (e.g., S&P 500, Nasdaq 100, Momentum, Semiconductor ETFs) may have massive hidden concentrations in individual mega-cap equities or specific sectors.
+Defines the complete end-to-end technical, enrichment, and calculation workflow.
 
-### 3.1 Dynamic Fund Profile Retrieval
-- **Public ETFs**: Query market data APIs dynamically (e.g., `yfinance.Ticker(symbol).funds_data`):
+### 3.1 Multi-Source Ingestion & Data Standardization
+- Ingest raw statements or read `data/output/normalized_holdings.csv`.
+- Standardize all holding records into canonical dimensions:
+  - Account identification: `source`, `account_id`, `account_label`, `owner`, `account_type`, `tax_treatment`.
+  - Position metadata: `symbol`, `asset_name`, `asset_class`, `asset_subclass`, `sector`, `industry`, `currency`.
+  - Valuation: `quantity`, `close_price_local`, `cost_basis_local`, `market_value_local`, `unrealized_pl_local`, `market_value_usd`, `cost_basis_usd`, `unrealized_pl_usd`, `market_value_cad`, `cost_basis_cad`, `unrealized_pl_cad`.
+
+### 3.2 Dynamic Market Data & ETF Look-Through Enrichment
+ETFs and mutual funds represent bundled baskets of underlying securities. Direct asset reporting creates opacity because an investor holding multiple ETFs may have massive hidden concentrations in individual mega-cap equities or specific sectors.
+
+- **Public ETFs / Funds**: Dynamically query market data APIs (e.g., `yfinance.Ticker(symbol).funds_data`):
   - `sector_weightings`: Dictionary of sector weights $\{S_k: W_{\text{sector}}(e, S_k)\}$.
   - `top_holdings`: Table of constituent symbols, company names, and weights $\{T_i: (N_i, W_{\text{holding}}(e, T_i))\}$.
-- **Unlisted / Institutional Funds**: For employer retirement plans or private funds lacking public ticker APIs, inject a benchmark profile matching the underlying tracked index composition via `custom_fund_profiles`.
+- **Unlisted / Institutional Funds**: For employer retirement plans lacking public tickers, dynamically inject a benchmark profile matching the underlying tracked index composition via `custom_fund_profiles`.
+- **Dynamic FX Rates**: Query real-time FX rates (e.g., `USDCAD=X`) or extract stated exchange rates to value all assets in USD and CAD.
 
-### 3.2 Economic Sector Look-Through Algorithm
+### 3.3 Mathematical Models & Aggregation Algorithms
+
+#### A. Multi-Dimensional Portfolio Aggregations
+- **Portfolio Totals**:
+  - Total Net Worth: $\text{TotalUSD} = \sum \text{market\_value\_usd}$, $\text{TotalCAD} = \sum \text{market\_value\_cad}$
+  - Total Tracked Cost Basis: $\text{TotalCostUSD} = \sum \text{cost\_basis\_usd}$
+  - Total Unrealized Gain/Loss: $\text{TotalPnLUSD} = \sum \text{unrealized\_pl\_usd}$
+  - Total Return on Cost: $\text{PnLPct} = \frac{\text{TotalPnLUSD}}{\text{TotalCostUSD}} \times 100\%$
+- **Asset Class Roll-Up**: Group positions by `asset_class`. Compute total USD, CAD, percentage share, and list primary components.
+- **Tax Structure Roll-Up**: Group positions by `tax_treatment` (`Taxable`, `Tax-Free`, `Tax-Deferred`).
+- **Account Ownership Roll-Up**: Group positions by `owner`.
+
+#### B. Economic Sector Look-Through Algorithm
 For each GICS sector $S \in \{\text{Technology}, \text{Communication Services}, \dots, \text{Basic Materials}\}$:
 1. **Direct Value Contribution**:
    $$\text{DirectValue}(S) = \sum_{h \in \text{Direct Equities/Cash/Crypto}, \text{Sector}(h) = S} \text{market\_value\_usd}(h)$$
@@ -51,13 +75,13 @@ For each GICS sector $S \in \{\text{Technology}, \text{Communication Services}, 
    $$\text{TotalSectorValue}(S) = \text{DirectValue}(S) + \text{IndirectValue}(S)$$
    $$\text{SectorPct}(S) = \frac{\text{TotalSectorValue}(S)}{\text{TotalPortfolioUSD}} \times 100\%$$
 
-### 3.3 Aggregate Single-Stock Concentration Algorithm
+#### C. Aggregate Single-Stock Concentration Algorithm
 For each unique underlying stock symbol $T$:
 1. **Direct Position Value**:
    $$\text{DirectStockValue}(T) = \sum_{h \in \text{Individual Stocks}, \text{Symbol}(h) = T} \text{market\_value\_usd}(h)$$
 2. **Indirect Position via ETFs**:
    $$\text{IndirectStockValue}(T) = \sum_{e \in \text{ETFs/Funds}} \left( \text{market\_value\_usd}(e) \times W_{\text{holding}}(e, T) \right)$$
-   *(Track contributing ETF symbols and amounts for transparency: $\text{Contrib}(e, T) = \text{market\_value\_usd}(e) \times W_{\text{holding}}(e, T)$)*
+   *(Track contributing ETF symbols and amounts: $\text{Contrib}(e, T) = \text{market\_value\_usd}(e) \times W_{\text{holding}}(e, T)$)*
 3. **Share-Class & Ticker Alias Merging**:
    - Normalize dual share classes (e.g., merge `GOOG` and `GOOGL` into `GOOG/GOOGL`, format `BRK B` and `BRK-B` into `BRK-B`).
 4. **Total Real Single-Stock Exposure**:
@@ -65,39 +89,11 @@ For each unique underlying stock symbol $T$:
    $$\text{StockPct}(T) = \frac{\text{TotalStockExposure}(T)}{\text{TotalPortfolioUSD}} \times 100\%$$
 5. Sort all securities in descending order of $\text{TotalStockExposure}(T)$ to report top portfolio concentrations.
 
----
+### 3.4 Reconciliation & Quality Control
+- Validate that the sum of direct and indirect sector exposures equals Total Portfolio USD ($100.00\%$).
+- Reconcile account totals against statement NAVs.
 
-## 4. Multi-Dimensional Portfolio Aggregations
-
-Compute summary metrics across five primary dimensions:
-
-### 4.1 Portfolio Totals
-- Total Net Worth: $\text{TotalUSD} = \sum \text{market\_value\_usd}$, $\text{TotalCAD} = \sum \text{market\_value\_cad}$
-- Total Tracked Cost Basis: $\text{TotalCostUSD} = \sum \text{cost\_basis\_usd}$
-- Total Unrealized Gain/Loss: $\text{TotalPnLUSD} = \sum \text{unrealized\_pl\_usd}$
-- Total Return on Cost: $\text{PnLPct} = \frac{\text{TotalPnLUSD}}{\text{TotalCostUSD}} \times 100\%$
-
-### 4.2 Asset Class Roll-Up
-- Group positions by `asset_class`.
-- Compute total USD value, CAD value, portfolio percentage, and list key holdings.
-
-### 4.3 Direct Line-Item Holdings
-- Group positions by `symbol`.
-- Sum market value, cost basis, and unrealized P&L.
-- Rank direct holdings by market value descending.
-
-### 4.4 Account Tax Structure Roll-Up
-- Group by `tax_treatment` (`Taxable`, `Tax-Free`, `Tax-Deferred`).
-- List participating accounts, total USD value, CAD value, and percentage allocation.
-
-### 4.5 Account Ownership Roll-Up
-- Group by `owner`.
-- Compute total USD value, CAD value, and percentage share.
-
----
-
-## 5. Standard Operating Procedure (SOP)
-
+### 3.5 Standard Operating Procedure (SOP)
 ```mermaid
 graph TD
     A["1. Load data/output/normalized_holdings.csv"] --> B["2. Execute ETFLookThroughEngine"]
@@ -107,24 +103,19 @@ graph TD
     E --> F["6. Generate Markdown Report (data/output/asset_allocation_report.md)"]
 ```
 
-1. **Load Normalized Dataset**:
-   - Read `data/output/normalized_holdings.csv` generated by the normalization stage.
-2. **Execute Look-Through Engine**:
-   - Use `src.core.lookthrough.ETFLookThroughEngine` to decompose fund constituents dynamically.
-3. **Perform Aggregations**:
-   - Compute totals, asset class percentages, look-through sector percentages, top 15 aggregate stock exposures, top direct positions, tax distribution, and ownership distribution.
-4. **Synthesize Key Insights**:
-   - Quantify mega-cap concentration differences (Direct % vs. True Look-Through %).
-   - Quantify combined dominant sector exposure (e.g., Technology + Communication Services).
-   - Assess diversification cushion (Defensive sectors, Digital Assets, Cash).
-5. **Render Markdown Report**:
-   - Write formatted report to `data/output/asset_allocation_report.md` following the template in Section 6.
+1. **Load Normalized Dataset**: Read `data/output/normalized_holdings.csv` (or execute normalization pipeline).
+2. **Execute Look-Through Engine**: Use `src.core.lookthrough.ETFLookThroughEngine` to decompose fund constituents dynamically.
+3. **Perform Aggregations**: Compute totals, asset class percentages, look-through sector percentages, top 15 aggregate stock exposures, top direct positions, tax distribution, and ownership distribution.
+4. **Synthesize Key Insights**: Quantify mega-cap concentration differences, dominant economic sectors, and defensive cushions.
+5. **Render Markdown Report**: Write formatted report to `data/output/asset_allocation_report.md`.
 
 ---
 
-## 6. Report Markdown Template Skeleton
+## 4. Output Template
 
-When generating `data/output/asset_allocation_report.md`, dynamically render the document using the following skeleton:
+Defines the publication-grade deliverables generated in `data/output/`.
+
+### 4.1 Report Deliverable (`data/output/asset_allocation_report.md`)
 
 ```markdown
 # Portfolio Asset Class & Sector Allocation Report (with ETF Look-Through)
@@ -132,7 +123,7 @@ When generating `data/output/asset_allocation_report.md`, dynamically render the
 **Statement Date**: <Statement_Date_or_Period>  
 **Generated At**: <Timestamp_UTC>  
 **FX Rate Assumed**: 1 CAD = <CAD_TO_USD_Rate> USD (1 USD = <USD_TO_CAD_Rate> CAD)  
-**Deliverable CSV**: [`normalized_holdings.csv`](file:///home/chao/asgard/home/src/financial-bot/data/output/normalized_holdings.csv)
+**Deliverable CSV**: [`normalized_holdings.csv`](../../data/output/normalized_holdings.csv)
 
 ---
 
@@ -232,3 +223,6 @@ pie title True Economic Sector Allocation (Look-Through)
 - **FX Normalization**: 1 CAD = <CAD_TO_USD_Rate> USD (derived from statement or market exchange rates).
 - **Disclaimer**: *This report is strictly for informational and quantitative personal finance tracking purposes and does not constitute formal tax, legal, or investment advice.*
 ```
+
+### 4.2 Data Deliverables
+- `data/output/normalized_holdings.csv`: Standardized raw and enriched holdings.
