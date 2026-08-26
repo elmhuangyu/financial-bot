@@ -96,15 +96,16 @@ The manifest is a JSON file conforming to the following declarative schema:
       "widgets": [
         {
           "id": "table-holdings",
-          "type": "data-table",
+          "type": "holdings-table",
           "title": "Portfolio Position Explorer",
           "sourceCsv": "normalized_holdings.csv",
           "columns": [
             { "key": "symbol", "label": "Symbol", "align": "left", "format": "text", "sortable": true },
             { "key": "asset_name", "label": "Asset Name", "align": "left", "format": "text", "sortable": true },
-            { "key": "account_label", "label": "Account", "align": "left", "format": "text" },
-            { "key": "tax_treatment", "label": "Tax Status", "align": "left", "format": "badge" },
-            { "key": "market_value_usd", "label": "Market Value (USD)", "align": "right", "format": "currency", "sortable": true }
+            { "key": "account_label", "label": "Account(s)", "align": "left", "format": "text" },
+            { "key": "tax_treatment", "label": "Tax Status", "align": "left", "format": "badge", "badgeColorMap": { "Tax-Free": "badge-success badge-outline", "Tax-Deferred": "badge-warning badge-outline", "Taxable": "badge-info badge-outline" } },
+            { "key": "market_value_usd", "label": "Market Value (USD)", "align": "right", "format": "currency", "sortable": true },
+            { "key": "pct_of_portfolio", "label": "% Portfolio", "align": "right", "format": "percent", "sortable": true }
           ],
           "features": {
             "search": true,
@@ -139,7 +140,8 @@ The manifest is a JSON file conforming to the following declarative schema:
 
 ### Supported Widget Types:
 - **`chart`**: `chartType: 'donut' | 'bar' | 'horizontal-bar' | 'line'` with `labels` and `datasets`.
-- **`data-table`**: `sourceCsv` (or inline `rows`), `columns` with formats (`currency`, `percent`, `number`, `badge`, `text`), and `features` (`aggregateBy: 'symbol'` for cross-account consolidation, `search`, `filters`, `exportCsv`).
+- **`holdings-table`**: Dedicated portfolio holdings explorer supporting cross-account position consolidation (`aggregateBy: 'symbol'`), multi-line account list, and tax status badges.
+- **`data-table`**: General-purpose tabular widget for generic data (financial attribution, risk metrics, budget, cashflow, transactions) with `columns`, `sort`, `search`, `filters`, and `exportCsv`.
 - **`markdown`**: `sourceMd` (or inline `content`) with native Mermaid diagram rendering & copy button.
 - **`key-val-list`**: List of progress bar items (`label`, `value`, `progressPct`, `color`).
 

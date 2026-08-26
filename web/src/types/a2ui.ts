@@ -13,6 +13,7 @@ export interface A2UIKpi {
 export type A2UIWidget =
   | A2UIChartWidget
   | A2UIDataTableWidget
+  | A2UIHoldingsTableWidget
   | A2UIMarkdownWidget
   | A2UIKeyValListWidget;
 
@@ -37,19 +38,41 @@ export interface A2UIChartWidget extends A2UIBaseWidget {
   options?: Record<string, any>;
 }
 
+export interface A2UIDataTableColumn {
+  key: string;
+  label: string;
+  align?: "left" | "center" | "right";
+  format?: "currency" | "percent" | "number" | "badge" | "text" | "date";
+  badgeColorMap?: Record<string, string>;
+  sortable?: boolean;
+}
+
 export interface A2UIDataTableWidget extends A2UIBaseWidget {
   type: "data-table";
   sourceCsv?: string;
   headers?: string[];
   rows?: Array<Record<string, any>>;
-  columns?: Array<{
-    key: string;
-    label: string;
-    align?: "left" | "center" | "right";
-    format?: "currency" | "percent" | "number" | "badge" | "text" | "date";
-    badgeColorMap?: Record<string, string>;
-    sortable?: boolean;
-  }>;
+  columns?: A2UIDataTableColumn[];
+  features?: {
+    search?: boolean;
+    sort?: boolean;
+    filters?: Array<{
+      key: string;
+      label: string;
+      options?: string[];
+    }>;
+    pagination?: boolean;
+    exportCsv?: boolean;
+    showTotals?: boolean;
+  };
+}
+
+export interface A2UIHoldingsTableWidget extends A2UIBaseWidget {
+  type: "holdings-table";
+  sourceCsv?: string;
+  headers?: string[];
+  rows?: Array<Record<string, any>>;
+  columns?: A2UIDataTableColumn[];
   features?: {
     search?: boolean;
     sort?: boolean;
@@ -59,9 +82,7 @@ export interface A2UIDataTableWidget extends A2UIBaseWidget {
       label: string;
       options?: string[];
     }>;
-    pagination?: boolean;
     exportCsv?: boolean;
-    showTotals?: boolean;
   };
 }
 

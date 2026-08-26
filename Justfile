@@ -65,4 +65,3 @@ archive name="":
     fi
     mkdir -p data/input data/tmp data/output
     echo "Created fresh data/ (input, tmp, output)"
-

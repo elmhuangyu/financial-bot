@@ -4,6 +4,7 @@ import type { A2UIManifest, A2UITab } from "../../types/a2ui";
 import A2UIKpiGrid from "./A2UIKpiGrid.vue";
 import A2UIChart from "./A2UIChart.vue";
 import A2UIDataTable from "./A2UIDataTable.vue";
+import A2UIHoldingsTable from "./A2UIHoldingsTable.vue";
 import A2UIMarkdown from "./A2UIMarkdown.vue";
 import A2UIKeyValList from "./A2UIKeyValList.vue";
 import {
@@ -99,6 +100,11 @@ function getActiveTab(): A2UITab | undefined {
         <template v-for="w in getActiveTab()?.widgets" :key="w.id">
           <div :class="w.colSpan === 2 ? 'lg:col-span-2' : ''">
             <A2UIChart v-if="w.type === 'chart'" :widget="w as any" />
+            <A2UIHoldingsTable
+              v-else-if="w.type === 'holdings-table'"
+              :widget="w as any"
+              :run-id="runId"
+            />
             <A2UIDataTable v-else-if="w.type === 'data-table'" :widget="w as any" :run-id="runId" />
             <A2UIMarkdown v-else-if="w.type === 'markdown'" :widget="w as any" :run-id="runId" />
             <A2UIKeyValList v-else-if="w.type === 'key-val-list'" :widget="w as any" />
@@ -110,6 +116,11 @@ function getActiveTab(): A2UITab | undefined {
       <div v-else class="space-y-6">
         <template v-for="w in getActiveTab()?.widgets" :key="w.id">
           <A2UIChart v-if="w.type === 'chart'" :widget="w as any" />
+          <A2UIHoldingsTable
+            v-else-if="w.type === 'holdings-table'"
+            :widget="w as any"
+            :run-id="runId"
+          />
           <A2UIDataTable v-else-if="w.type === 'data-table'" :widget="w as any" :run-id="runId" />
           <A2UIMarkdown v-else-if="w.type === 'markdown'" :widget="w as any" :run-id="runId" />
           <A2UIKeyValList v-else-if="w.type === 'key-val-list'" :widget="w as any" />

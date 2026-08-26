@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
-import type { A2UIDataTableWidget, A2UIDataTableColumn } from "../../types/a2ui";
+import type { A2UIHoldingsTableWidget } from "../../types/a2ui";
 import { useCurrency } from "../../composables/useCurrency";
 import { usePrivacy } from "../../composables/usePrivacy";
-import { Search, RotateCcw, Download, Table2 } from "lucide-vue-next";
+import { Search, Combine, RotateCcw, Download, Table2 } from "lucide-vue-next";
 
 const props = defineProps<{
-  widget: A2UIDataTableWidget;
+  widget: A2UIHoldingsTableWidget;
   runId: string;
 }>();
 
@@ -19,6 +19,7 @@ const isLoading = ref<boolean>(false);
 
 const searchQuery = ref<string>("");
 const activeFilters = ref<Record<string, string>>({});
+const isAggregateMode = ref<boolean>(false);
 const sortKey = ref<string>("");
 const sortAsc = ref<boolean>(false);
 
@@ -93,7 +94,7 @@ function toggleSort(key: string) {
 }
 
 // Columns definition
-const columns = computed<A2UIDataTableColumn[]>(() => {
+const columns = computed(() => {
   if (props.widget.columns && props.widget.columns.length > 0) {
     return props.widget.columns;
   }
@@ -106,8 +107,17 @@ const columns = computed<A2UIDataTableColumn[]>(() => {
   }));
 });
 
-// Processed Rows (Filtered + Sorted)
+const totalPortfolioValue = computed(() => {
+  return rawRows.value.reduce((sum, r) => {
+    const v = parseFloat(String(r.market_value_usd || 0).replace(/,/g, ""));
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
+});
+
+// Processed Rows (Filtered + Aggregated + Sorted)
 const processedRows = computed(() => {
+  const total = totalPortfolioValue.value;
+
   // 1. Filter
   const filtered = rawRows.value.filter((row) => {
     for (const [k, val] of Object.entries(activeFilters.value)) {
@@ -126,9 +136,71 @@ const processedRows = computed(() => {
     return true;
   });
 
-  // 2. Sort
-  if (!sortKey.value) return filtered;
-  return [...filtered].sort((a, b) => {
+  // 2. Aggregate if requested
+  const aggKey = props.widget.features?.aggregateBy;
+  let list = filtered.map((r) => {
+    const mval = parseFloat(String(r.market_value_usd || 0).replace(/,/g, ""));
+    const pct = total > 0 && !isNaN(mval) ? (mval / total) * 100 : 0;
+    return {
+      ...r,
+      pct_of_portfolio: r.pct_of_portfolio !== undefined ? r.pct_of_portfolio : pct,
+    };
+  });
+
+  if (isAggregateMode.value && aggKey) {
+    const groupMap: Record<string, any> = {};
+    filtered.forEach((row) => {
+      const primary = String(row[aggKey] || "OTHER");
+      if (!groupMap[primary]) {
+        groupMap[primary] = {
+          ...row,
+          _raw_accounts: new Set([row.account_label || row.account || "Default"]),
+          _raw_tax: new Set([row.tax_treatment || "Taxable"]),
+          _raw_owners: new Set([row.owner || "Primary"]),
+          _is_aggregated: true,
+        };
+      } else {
+        groupMap[primary]._raw_accounts.add(row.account_label || row.account || "Default");
+        groupMap[primary]._raw_tax.add(row.tax_treatment || "Taxable");
+        groupMap[primary]._raw_owners.add(row.owner || "Primary");
+
+        // Sum numeric fields
+        for (const col of columns.value) {
+          if (
+            ["currency", "number", "percent"].includes(col.format || "") &&
+            col.key !== aggKey &&
+            col.key !== "pct_of_portfolio"
+          ) {
+            const numA = parseFloat(String(groupMap[primary][col.key] || 0).replace(/,/g, ""));
+            const numB = parseFloat(String(row[col.key] || 0).replace(/,/g, ""));
+            if (!isNaN(numA) && !isNaN(numB)) {
+              groupMap[primary][col.key] = numA + numB;
+            }
+          }
+        }
+      }
+    });
+
+    list = Object.values(groupMap).map((g) => {
+      const mval = parseFloat(String(g.market_value_usd || 0).replace(/,/g, ""));
+      const pct = total > 0 && !isNaN(mval) ? (mval / total) * 100 : 0;
+      return {
+        ...g,
+        pct_of_portfolio: pct,
+        account_label: Array.from(g._raw_accounts).join(", "),
+        accounts_list: Array.from(g._raw_accounts),
+        account_count: g._raw_accounts.size,
+        tax_treatment: Array.from(g._raw_tax).join(", "),
+        tax_treatments_list: Array.from(g._raw_tax),
+        owner: Array.from(g._raw_owners).join(", "),
+        owners_list: Array.from(g._raw_owners),
+      };
+    });
+  }
+
+  // 3. Sort
+  if (!sortKey.value) return list;
+  return [...list].sort((a, b) => {
     let valA = a[sortKey.value];
     let valB = b[sortKey.value];
     const numA = parseFloat(String(valA || "").replace(/,/g, ""));
@@ -150,6 +222,14 @@ function getBadgeList(row: any, col: any): string[] {
   const val = row[col.key];
   if (val === undefined || val === null || val === "") return [];
   if (Array.isArray(val)) return val.map((v) => String(v).trim()).filter(Boolean);
+
+  if (row[`${col.key}s_list`] && Array.isArray(row[`${col.key}s_list`])) {
+    return row[`${col.key}s_list`].map((v: any) => String(v).trim()).filter(Boolean);
+  }
+  if (row[`${col.key}_list`] && Array.isArray(row[`${col.key}_list`])) {
+    return row[`${col.key}_list`].map((v: any) => String(v).trim()).filter(Boolean);
+  }
+
   const strVal = String(val);
   if (strVal.includes(",")) {
     return strVal
@@ -160,7 +240,19 @@ function getBadgeList(row: any, col: any): string[] {
   return [strVal];
 }
 
-function formatCell(row: any, col: A2UIDataTableColumn): string {
+function formatBadgeLabel(badgeText: string, col?: any): string {
+  if (!badgeText) return "";
+  const key = col?.key?.toLowerCase() || "";
+  if (key.includes("tax") || badgeText.toLowerCase().startsWith("tax-")) {
+    if (badgeText.includes("-")) {
+      const parts = badgeText.split("-");
+      return parts[parts.length - 1].trim();
+    }
+  }
+  return badgeText;
+}
+
+function formatCell(row: any, col: any): string {
   const val = row[col.key];
   if (col.format === "currency") {
     return formatMoney(val, isPrivacyMode.value);
@@ -171,7 +263,11 @@ function formatCell(row: any, col: A2UIDataTableColumn): string {
   }
   if (col.format === "percent") {
     const num = parseFloat(String(val || 0).replace(/,/g, ""));
-    return isNaN(num) ? String(val || "") : `${num > 0 ? "+" : ""}${num.toFixed(2)}%`;
+    if (isNaN(num)) return String(val || "");
+    if (col.key === "pct_of_portfolio" || col.key === "pct" || col.key.includes("weight")) {
+      return `${num.toFixed(2)}%`;
+    }
+    return `${num > 0 ? "+" : ""}${num.toFixed(2)}%`;
   }
   return String(val || "");
 }
@@ -226,11 +322,31 @@ function exportCsv() {
       </button>
     </div>
 
-    <!-- Controls Toolbar -->
+    <!-- Controls Toolbar (Stacked below title) -->
     <div
-      v-if="widget.features?.search !== false || widget.features?.filters?.length"
+      v-if="
+        widget.features?.aggregateBy ||
+        widget.features?.search !== false ||
+        widget.features?.filters?.length
+      "
       class="flex flex-wrap items-center gap-2 pt-1 pb-3 border-b border-base-300"
     >
+      <!-- Cross-Account Aggregate Assets Button -->
+      <button
+        v-if="widget.features?.aggregateBy"
+        @click="isAggregateMode = !isAggregateMode"
+        class="btn btn-sm gap-1.5 text-xs font-semibold rounded-lg transition-all"
+        :class="
+          isAggregateMode
+            ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary/90'
+            : 'btn-outline border-base-300 text-base-content/70 hover:bg-base-300 hover:text-base-content'
+        "
+        title="Consolidate positions with identical symbols across all accounts"
+      >
+        <Combine class="w-4 h-4" :class="isAggregateMode ? 'text-white' : 'text-primary'" />
+        <span>{{ isAggregateMode ? "Aggregated" : "Aggregate Assets" }}</span>
+      </button>
+
       <!-- Search Input -->
       <div v-if="widget.features?.search !== false" class="relative w-full sm:w-48">
         <Search class="w-4 h-4 absolute left-3 top-2.5 text-base-content/50" />
@@ -312,22 +428,48 @@ function exportCsv() {
                     : 'text-left'
               "
             >
-              <!-- Badge format -->
+              <!-- Multi-account multi-line list for aggregated positions -->
               <div
-                v-if="col.format === 'badge'"
+                v-if="col.key === 'account_label' && row._is_aggregated && row.account_count > 1"
+                class="flex flex-col gap-1 font-sans py-1 min-w-[140px]"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="badge badge-xs badge-info font-bold shrink-0"
+                    >{{ row.account_count }} Accounts</span
+                  >
+                </div>
+                <div class="flex flex-col gap-0.5 text-[11px] text-base-content/80 leading-tight">
+                  <span
+                    v-for="acc in row.accounts_list || row.account_label.split(', ')"
+                    :key="acc"
+                    class="truncate max-w-[220px]"
+                    :title="acc"
+                  >
+                    • {{ acc }}
+                  </span>
+                </div>
+              </div>
+              <!-- Badge format (split multi-badge & multi-line wrap) -->
+              <div
+                v-else-if="col.format === 'badge'"
                 class="flex flex-wrap gap-1 items-center max-w-[240px]"
               >
                 <span
                   v-for="b in getBadgeList(row, col)"
                   :key="b"
                   class="badge badge-xs font-semibold whitespace-nowrap"
-                  :class="col.badgeColorMap?.[b] || 'badge-neutral badge-outline'"
+                  :class="
+                    col.badgeColorMap?.[b] ||
+                    col.badgeColorMap?.[formatBadgeLabel(b, col)] ||
+                    'badge-neutral badge-outline'
+                  "
+                  :title="b"
                 >
-                  {{ b }}
+                  {{ formatBadgeLabel(b, col) }}
                 </span>
               </div>
               <!-- Standard cell -->
-              <span v-else>
+              <span v-else :class="col.key === 'symbol' ? 'font-bold text-base-content' : ''">
                 {{ formatCell(row, col) }}
               </span>
             </td>
@@ -338,7 +480,10 @@ function exportCsv() {
 
     <!-- Table Footer / Count -->
     <div class="flex justify-between items-center text-xs text-base-content/60 font-sans pt-1">
-      <span>Showing {{ processedRows.length }} rows</span>
+      <span
+        >Showing {{ processedRows.length }}
+        {{ isAggregateMode ? "consolidated items" : "rows" }}</span
+      >
     </div>
   </div>
 </template>
