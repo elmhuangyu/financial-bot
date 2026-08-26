@@ -22,15 +22,15 @@ function formatDate(isoString: string): string {
 </script>
 
 <template>
-  <aside class="w-64 bg-base-200 h-full flex flex-col p-4 text-slate-200 shrink-0 select-none">
+  <aside class="w-64 bg-base-200 h-full flex flex-col p-4 text-base-content shrink-0 select-none">
     <div class="flex items-center justify-between px-2 pb-4 border-b border-base-300">
       <div class="flex items-center gap-2">
         <FolderKanban class="w-5 h-5 text-primary" />
-        <span class="font-bold text-sm text-white">Execution Runs</span>
+        <span class="font-bold text-sm text-base-content">Execution Runs</span>
       </div>
       <button
         @click="toggleSidebar"
-        class="btn btn-ghost btn-xs btn-square text-slate-400 hover:text-white"
+        class="btn btn-ghost btn-xs btn-square text-base-content/60 hover:text-base-content"
         title="Collapse Sidebar"
       >
         <ChevronLeft class="w-4 h-4" />
@@ -42,7 +42,7 @@ function formatDate(isoString: string): string {
       <!-- Current Session -->
       <div>
         <div
-          class="text-[10px] uppercase tracking-wider font-bold text-slate-500 px-2 mb-1.5 flex items-center gap-1"
+          class="text-[10px] uppercase tracking-wider font-bold text-base-content/50 px-2 mb-1.5 flex items-center gap-1"
         >
           <Sparkles class="w-3 h-3 text-primary" /> Active Workspace
         </div>
@@ -53,15 +53,18 @@ function formatDate(isoString: string): string {
               class="flex items-center justify-between p-2.5 rounded-xl transition-all"
               :class="
                 currentRunId === run.id
-                  ? 'bg-primary text-white font-bold shadow-md'
-                  : 'hover:bg-base-300 text-slate-300'
+                  ? 'bg-primary text-primary-content font-bold shadow-md'
+                  : 'hover:bg-base-300 text-base-content/80'
               "
             >
               <div class="flex items-center gap-2 truncate">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span class="truncate">{{ run.label }}</span>
               </div>
-              <CheckCircle2 v-if="currentRunId === run.id" class="w-4 h-4 text-white shrink-0" />
+              <CheckCircle2
+                v-if="currentRunId === run.id"
+                class="w-4 h-4 text-primary-content shrink-0"
+              />
             </a>
           </li>
         </ul>
@@ -70,14 +73,14 @@ function formatDate(isoString: string): string {
       <!-- Archived Runs -->
       <div>
         <div
-          class="text-[10px] uppercase tracking-wider font-bold text-slate-500 px-2 mb-1.5 flex items-center gap-1"
+          class="text-[10px] uppercase tracking-wider font-bold text-base-content/50 px-2 mb-1.5 flex items-center gap-1"
         >
           <Archive class="w-3 h-3 text-secondary" /> Historical Archive
         </div>
 
         <div
           v-if="runs.filter((r) => !r.isCurrent).length === 0"
-          class="text-xs text-slate-500 px-3 py-2 italic"
+          class="text-xs text-base-content/50 px-3 py-2 italic"
         >
           No archived runs found in archived/
         </div>
@@ -89,8 +92,8 @@ function formatDate(isoString: string): string {
               class="flex flex-col items-start p-2.5 rounded-xl transition-all"
               :class="
                 currentRunId === run.id
-                  ? 'bg-base-300 border border-primary/50 text-white font-semibold'
-                  : 'hover:bg-base-300/60 text-slate-400'
+                  ? 'bg-base-300 border border-primary/50 text-base-content font-semibold'
+                  : 'hover:bg-base-300/60 text-base-content/60'
               "
             >
               <div class="flex items-center justify-between w-full">
@@ -100,7 +103,7 @@ function formatDate(isoString: string): string {
                   class="w-3.5 h-3.5 text-primary shrink-0"
                 />
               </div>
-              <span class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+              <span class="text-[10px] text-base-content/50 flex items-center gap-1 mt-0.5">
                 <Clock class="w-3 h-3" /> {{ formatDate(run.timestamp) }}
               </span>
             </a>
@@ -110,7 +113,7 @@ function formatDate(isoString: string): string {
     </div>
 
     <!-- Drawer Footer -->
-    <div class="pt-3 border-t border-base-300 text-[11px] text-slate-500 text-center">
+    <div class="pt-3 border-t border-base-300 text-[11px] text-base-content/50 text-center">
       <p>Financial Bot Web v0.1</p>
     </div>
   </aside>

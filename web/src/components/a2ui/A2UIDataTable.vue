@@ -115,13 +115,14 @@ const processedRows = computed(() => {
       if (val && String(row[k]) !== val) return false;
     }
     if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase();
-      const match = Object.values(row).some((v) =>
-        String(v || "")
-          .toLowerCase()
-          .includes(q),
-      );
-      if (!match) return false;
+      const q = searchQuery.value.trim().toLowerCase();
+      if (q) {
+        const targetKey = columns.value[0]?.key || Object.keys(row)[0];
+        if (targetKey) {
+          const val = String(row[targetKey] ?? "").toLowerCase();
+          if (!val.includes(q)) return false;
+        }
+      }
     }
     return true;
   });
@@ -226,83 +227,95 @@ function exportCsv() {
 </script>
 
 <template>
-  <div class="card bg-base-200 border border-base-300 shadow-sm p-5 space-y-4">
-    <!-- Header & Controls -->
+  <div class="card bg-base-200 border border-base-300 shadow-sm p-5 space-y-3">
+    <!-- Header Block (Title & Description + Export) -->
     <div
-      class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-base-300"
+      v-if="widget.title || widget.description || widget.features?.exportCsv !== false"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
     >
       <div>
-        <h3 v-if="widget.title" class="text-base font-bold text-white flex items-center gap-2">
+        <h3
+          v-if="widget.title"
+          class="text-base font-bold text-base-content flex items-center gap-2"
+        >
           <Table2 class="w-5 h-5 text-primary" /> {{ widget.title }}
         </h3>
-        <p v-if="widget.description" class="text-xs text-slate-400 mt-0.5">
+        <p v-if="widget.description" class="text-xs text-base-content/60 mt-0.5">
           {{ widget.description }}
         </p>
       </div>
 
-      <!-- Controls -->
-      <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-        <!-- Cross-Account Aggregate Assets Button -->
-        <button
-          v-if="widget.features?.aggregateBy"
-          @click="isAggregateMode = !isAggregateMode"
-          class="btn btn-sm gap-1.5 text-xs font-semibold rounded-lg transition-all"
-          :class="
-            isAggregateMode
-              ? 'btn-primary text-white shadow-md'
-              : 'btn-outline border-base-300 text-slate-300'
-          "
-          title="Consolidate positions with identical symbols across all accounts"
-        >
-          <Combine class="w-4 h-4" />
-          <span>{{ isAggregateMode ? "Aggregated" : "Aggregate Assets" }}</span>
-        </button>
+      <!-- Export CSV Button -->
+      <button
+        v-if="widget.features?.exportCsv !== false"
+        @click="exportCsv"
+        class="btn btn-sm btn-outline border-base-300 text-base-content/80 hover:text-base-content gap-1 text-xs self-start sm:self-auto shrink-0"
+      >
+        <Download class="w-3.5 h-3.5 text-primary" />
+        <span>Export CSV</span>
+      </button>
+    </div>
 
-        <!-- Search Input -->
-        <div v-if="widget.features?.search !== false" class="relative w-full sm:w-48">
-          <Search class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search..."
-            class="input input-sm input-bordered w-full pl-9 rounded-lg bg-base-300 border-base-300 text-xs placeholder-slate-500"
-          />
-        </div>
+    <!-- Controls Toolbar (Stacked below title) -->
+    <div
+      v-if="
+        widget.features?.aggregateBy ||
+        widget.features?.search !== false ||
+        widget.features?.filters?.length
+      "
+      class="flex flex-wrap items-center gap-2 pt-1 pb-3 border-b border-base-300"
+    >
+      <!-- Cross-Account Aggregate Assets Button -->
+      <button
+        v-if="widget.features?.aggregateBy"
+        @click="isAggregateMode = !isAggregateMode"
+        class="btn btn-sm gap-1.5 text-xs font-semibold rounded-lg transition-all"
+        :class="
+          isAggregateMode
+            ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary/90'
+            : 'btn-outline border-base-300 text-base-content/70 hover:bg-base-300 hover:text-base-content'
+        "
+        title="Consolidate positions with identical symbols across all accounts"
+      >
+        <Combine class="w-4 h-4" :class="isAggregateMode ? 'text-white' : 'text-primary'" />
+        <span>{{ isAggregateMode ? "Aggregated" : "Aggregate Assets" }}</span>
+      </button>
 
-        <!-- Filter Dropdowns -->
-        <template v-if="widget.features?.filters">
-          <select
-            v-for="f in widget.features.filters"
-            :key="f.key"
-            v-model="activeFilters[f.key]"
-            class="select select-sm select-bordered bg-base-300 text-xs rounded-lg"
-          >
-            <option value="">All {{ f.label }}</option>
-            <option v-for="opt in filterOptionsMap[f.key] || []" :key="opt" :value="opt">
-              {{ opt }}
-            </option>
-          </select>
-        </template>
-
-        <!-- Reset Button -->
-        <button
-          @click="resetFilters"
-          class="btn btn-sm btn-ghost text-slate-400 hover:text-white"
-          title="Reset Filters"
-        >
-          <RotateCcw class="w-3.5 h-3.5" />
-        </button>
-
-        <!-- Export CSV Button -->
-        <button
-          v-if="widget.features?.exportCsv !== false"
-          @click="exportCsv"
-          class="btn btn-sm btn-outline border-base-300 text-slate-300 hover:text-white gap-1 text-xs"
-        >
-          <Download class="w-3.5 h-3.5 text-primary" />
-          <span>Export</span>
-        </button>
+      <!-- Search Input -->
+      <div v-if="widget.features?.search !== false" class="relative w-full sm:w-48">
+        <Search class="w-4 h-4 absolute left-3 top-2.5 text-base-content/50" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="columns[0] ? `Search ${columns[0].label}...` : 'Search...'"
+          class="input input-sm input-bordered w-full pl-9 rounded-lg bg-base-300 border-base-300 text-xs text-base-content placeholder:text-base-content/40"
+        />
       </div>
+
+      <!-- Filter Dropdowns -->
+      <template v-if="widget.features?.filters">
+        <select
+          v-for="f in widget.features.filters"
+          :key="f.key"
+          v-model="activeFilters[f.key]"
+          class="select select-sm select-bordered bg-base-300 text-xs rounded-lg text-base-content transition-colors"
+          :class="activeFilters[f.key] ? 'border-primary/60 font-semibold' : 'border-base-300'"
+        >
+          <option value="">All {{ f.label }}</option>
+          <option v-for="opt in filterOptionsMap[f.key] || []" :key="opt" :value="opt">
+            {{ opt }}
+          </option>
+        </select>
+      </template>
+
+      <!-- Reset Button -->
+      <button
+        @click="resetFilters"
+        class="btn btn-sm btn-ghost text-base-content/60 hover:text-base-content"
+        title="Reset Filters"
+      >
+        <RotateCcw class="w-3.5 h-3.5" />
+      </button>
     </div>
 
     <!-- Table -->
@@ -311,13 +324,13 @@ function exportCsv() {
         <span class="loading loading-spinner text-primary loading-md"></span>
       </div>
       <table v-else class="table table-xs w-full font-mono">
-        <thead class="text-slate-400 bg-base-300/80 uppercase select-none font-sans">
+        <thead class="text-base-content/70 bg-base-300/80 uppercase select-none font-sans">
           <tr>
             <th
               v-for="col in columns"
               :key="col.key"
               @click="col.sortable !== false ? toggleSort(col.key) : null"
-              class="hover:text-white"
+              class="hover:text-base-content"
               :class="[
                 col.align === 'right'
                   ? 'text-right'
@@ -331,7 +344,7 @@ function exportCsv() {
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-base-300/60 text-slate-200">
+        <tbody class="divide-y divide-base-300/60 text-base-content/90">
           <tr
             v-for="(row, idx) in processedRows"
             :key="idx"
@@ -357,7 +370,7 @@ function exportCsv() {
                   >{{ row.account_count }} Accounts</span
                 >
                 <span
-                  class="truncate max-w-[120px] text-[11px] text-slate-400"
+                  class="truncate max-w-[120px] text-[11px] text-base-content/60"
                   :title="row.account_label"
                   >{{ row.account_label }}</span
                 >
@@ -371,7 +384,7 @@ function exportCsv() {
                 {{ row[col.key] }}
               </span>
               <!-- Standard cell -->
-              <span v-else :class="col.key === 'symbol' ? 'font-bold text-white' : ''">
+              <span v-else :class="col.key === 'symbol' ? 'font-bold text-base-content' : ''">
                 {{ formatCell(row, col) }}
               </span>
             </td>
@@ -381,7 +394,7 @@ function exportCsv() {
     </div>
 
     <!-- Table Footer / Count -->
-    <div class="flex justify-between items-center text-xs text-slate-400 font-sans pt-1">
+    <div class="flex justify-between items-center text-xs text-base-content/60 font-sans pt-1">
       <span
         >Showing {{ processedRows.length }}
         {{ isAggregateMode ? "consolidated items" : "rows" }}</span

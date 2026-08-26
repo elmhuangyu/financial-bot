@@ -145,6 +145,39 @@ The manifest is a JSON file conforming to the following declarative schema:
 
 ---
 
+### 2.1 Dynamic KPI Formulation Guide (Scenario-Based)
+
+The `kpis` array at the root of `ui_manifest.json` supports 0 to 4 summary metrics. **Never force or hardcode holding metrics when holdings data does not exist.** Adapt KPIs dynamically based on the active report deliverables:
+
+| Report / Scenario Type | Typical Available Deliverables | Recommended KPI Cards (0 to 4) | Calculation / Source |
+| :--- | :--- | :--- | :--- |
+| **Asset Allocation & Portfolio Normalization** | `normalized_holdings.csv` | 1. **Total Net Worth** (`format: currency`)<br>2. **Unrealized Gain/Loss** (`format: currency`, `change: +X.XX%`)<br>3. **Top Single Holding** (`format: percent` or `currency`)<br>4. **Cash / Liquid Buffer** (`format: currency` or `percent`) | Sum of `market_value_usd`, unrealized P&L vs cost basis, max concentrated symbol percentage. |
+| **Performance Attribution & Factor Risk** | `performance_attribution_brinson.csv`, `risk_measures_fama.csv` | 1. **Cumulative Return (TWR)** (`format: percent`, `change: +X.X% α`)<br>2. **Downside Sortino Ratio** (`format: number`)<br>3. **Market Beta & Alpha** (`format: string` or `number`)<br>4. **Max Drawdown / Volatility** (`format: percent`) | Extracted directly from attribution active effect and CAPM factor regressions. |
+| **Retirement & Financial Independence** | `retirement_trajectory.csv`, `monte_carlo_sim.csv` | 1. **FI Target Net Worth** (`format: currency`)<br>2. **Projected FI Age / Year** (`format: string`)<br>3. **Monte Carlo Success Rate** (`format: percent`)<br>4. **Safe Withdrawal Runway** (`format: number`, subtext: "years") | Extracted from simulated portfolio milestones and probability distributions. |
+| **Cashflow & Budget Analysis** | `cashflow_summary.csv`, `monthly_burn.csv` | 1. **Monthly Net Savings** (`format: currency`)<br>2. **Savings Rate** (`format: percent`)<br>3. **Fixed Needs Ratio** (`format: percent`)<br>4. **Discretionary Buffer** (`format: currency`) | Net income minus living expenses, 50/30/20 budget allocations. |
+| **Text-Only / Unstructured Reports** | `*_report.md` | `kpis: []` (Empty array) | Leave empty; UI will cleanly skip KPI rendering and directly mount tabs and reports. |
+
+#### KPI Object Schema:
+```json
+{
+  "id": "unique-kpi-id",
+  "label": "Metric Display Title",
+  "value": 881462.02,
+  "format": "currency",
+  "change": "+49.89%",
+  "changeType": "positive",
+  "subtext": "context or benchmark comparison",
+  "icon": "wallet",
+  "color": "emerald"
+}
+```
+- **`format`**: `"currency"` | `"percent"` | `"number"` | `"string"`
+- **`changeType`**: `"positive"` (green) | `"negative"` (red) | `"neutral"`
+- **`icon`**: `"wallet"`, `"pie-chart"`, `"shield-check"`, `"gauge"`, `"coins"`, `"percent"`, `"layers"`, `"activity"`, `"trending-up"`, `"trending-down"`, `"dollar"`
+- **`color`**: `"primary"`, `"secondary"`, `"accent"`, `"emerald"`, `"amber"`, `"purple"`, `"sky"`, `"rose"`
+
+---
+
 ## 3. Step-by-Step Generation SOP
 
 When user requests the web report / dashboard:

@@ -39,8 +39,8 @@ const colorClassMap: Record<string, string> = {
 <template>
   <div class="card bg-base-200 border border-base-300 p-6 shadow-sm space-y-4">
     <div v-if="widget.title" class="pb-2 border-b border-base-300">
-      <h3 class="text-base font-bold text-white">{{ widget.title }}</h3>
-      <p v-if="widget.description" class="text-xs text-slate-400 mt-0.5">
+      <h3 class="text-base font-bold text-base-content">{{ widget.title }}</h3>
+      <p v-if="widget.description" class="text-xs text-base-content/60 mt-0.5">
         {{ widget.description }}
       </p>
     </div>
@@ -48,10 +48,10 @@ const colorClassMap: Record<string, string> = {
     <div class="space-y-3.5">
       <div v-for="item in widget.items" :key="item.label" class="space-y-1">
         <div class="flex justify-between text-xs">
-          <span class="text-slate-300 font-medium">{{ item.label }}</span>
-          <span class="font-mono text-slate-100 font-bold">
+          <span class="text-base-content/80 font-medium">{{ item.label }}</span>
+          <span class="font-mono text-base-content font-bold">
             {{ formatVal(item) }}
-            <span v-if="item.subtext" class="text-slate-400 font-normal ml-1 font-sans"
+            <span v-if="item.subtext" class="text-base-content/50 font-normal ml-1 font-sans"
               >({{ item.subtext }})</span
             >
           </span>

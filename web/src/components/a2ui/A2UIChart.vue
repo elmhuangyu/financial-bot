@@ -58,7 +58,7 @@ function renderChart() {
         display: isDonutOrPie,
         position: "right",
         labels: {
-          color: "#94a3b8",
+          color: "#64748b",
           font: { family: "Inter, system-ui, sans-serif", size: 11 },
           boxWidth: 12,
           boxHeight: 12,
@@ -68,7 +68,7 @@ function renderChart() {
       tooltip: {
         backgroundColor: "#0f172a",
         titleColor: "#f8fafc",
-        bodyColor: "#94a3b8",
+        bodyColor: "#cbd5e1",
         borderColor: "#334155",
         borderWidth: 1,
         padding: 10,
@@ -96,12 +96,12 @@ function renderChart() {
   if (!isDonutOrPie) {
     configOptions.scales = {
       x: {
-        grid: { color: "rgba(51, 65, 85, 0.4)" },
-        ticks: { color: "#94a3b8", font: { size: 10 } },
+        grid: { color: "rgba(100, 116, 139, 0.15)" },
+        ticks: { color: "#64748b", font: { size: 10 } },
       },
       y: {
-        grid: { color: "rgba(51, 65, 85, 0.4)" },
-        ticks: { color: "#94a3b8", font: { size: 10 } },
+        grid: { color: "rgba(100, 116, 139, 0.15)" },
+        ticks: { color: "#64748b", font: { size: 10 } },
       },
     };
   } else {
@@ -152,8 +152,8 @@ onBeforeUnmount(() => {
 <template>
   <div class="card bg-base-200 border border-base-300 p-6 shadow-sm flex flex-col min-h-[340px]">
     <div v-if="widget.title" class="pb-3 mb-4 border-b border-base-300">
-      <h3 class="text-base font-bold text-white">{{ widget.title }}</h3>
-      <p v-if="widget.description" class="text-xs text-slate-400 mt-0.5">
+      <h3 class="text-base font-bold text-base-content">{{ widget.title }}</h3>
+      <p v-if="widget.description" class="text-xs text-base-content/60 mt-0.5">
         {{ widget.description }}
       </p>
     </div>

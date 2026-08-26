@@ -76,8 +76,8 @@ function getActiveTab(): A2UITab | undefined {
         class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
         :class="
           activeTabId === tab.id
-            ? 'tab-active bg-primary text-white font-bold shadow-md'
-            : 'text-slate-400 hover:text-white'
+            ? 'tab-active bg-primary text-primary-content font-bold shadow-md'
+            : 'text-base-content/70 hover:text-base-content'
         "
       >
         <component :is="getTabIcon(tab.icon)" class="w-4 h-4" />
