@@ -24,17 +24,24 @@ export interface A2UIBaseWidget {
   colSpan?: 1 | 2 | 3 | 4;
 }
 
+export interface A2UIChartDataset {
+  label?: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string;
+  borderWidth?: number;
+  borderDash?: number[];
+  borderRadius?: number;
+  pointRadius?: number;
+  pointHoverRadius?: number;
+  [key: string]: any;
+}
+
 export interface A2UIChartWidget extends A2UIBaseWidget {
   type: "chart";
   chartType: "donut" | "doughnut" | "pie" | "bar" | "horizontal-bar" | "line";
   labels: string[];
-  datasets: Array<{
-    label?: string;
-    data: number[];
-    backgroundColor?: string | string[];
-    borderColor?: string;
-    borderRadius?: number;
-  }>;
+  datasets: A2UIChartDataset[];
   options?: Record<string, any>;
 }
 

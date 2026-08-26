@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from "vue";
 import { marked } from "marked";
+import katex from "katex";
+import markedKatex from "marked-katex-extension";
 import mermaid from "mermaid";
 import type { A2UIMarkdownWidget } from "../../types/a2ui";
 import { FileText, Copy, Check } from "lucide-vue-next";
@@ -43,7 +45,7 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-// Configure custom renderer for Marked to reliably isolate Mermaid blocks
+// Configure custom renderer for Marked to reliably isolate Mermaid blocks and Math blocks
 const renderer = new marked.Renderer();
 renderer.code = function (token: any, langParam?: string) {
   const text = typeof token === "string" ? token : token?.text || "";
@@ -55,10 +57,27 @@ renderer.code = function (token: any, langParam?: string) {
     const safeCode = encodeURIComponent(text.trim());
     return `<div class="mermaid-container my-8 p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto" data-mermaid-code="${safeCode}"></div>`;
   }
+  if (lang === "math" || lang === "latex" || lang === "katex") {
+    try {
+      const rendered = katex.renderToString(text.trim(), {
+        displayMode: true,
+        throwOnError: false,
+      });
+      return `<div class="katex-block my-4 overflow-x-auto flex justify-center">${rendered}</div>`;
+    } catch (e) {
+      console.warn("KaTeX code block render error:", e);
+    }
+  }
   const escaped = typeof token === "object" && token?.escaped ? text : escapeHtml(text);
   return `<pre class="bg-base-300 p-4 rounded-xl overflow-x-auto text-xs font-mono text-slate-200 my-4"><code>${escaped}</code></pre>`;
 };
 
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    nonStandard: true,
+  }),
+);
 marked.use({ renderer });
 
 async function renderMermaidDiagrams() {

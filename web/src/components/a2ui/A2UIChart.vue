@@ -44,9 +44,20 @@ function renderChart() {
   const datasets = (props.widget.datasets || []).map((ds) => ({
     ...ds,
     backgroundColor: ds.backgroundColor || defaultColors,
-    borderColor: ds.borderColor || (isDonutOrPie ? "#0f172a" : "transparent"),
-    borderWidth: isDonutOrPie ? 2 : 0,
+    borderColor:
+      ds.borderColor ||
+      (isDonutOrPie ? "#0f172a" : chartType === "line" ? "#3b82f6" : "transparent"),
+    borderWidth:
+      ds.borderWidth !== undefined
+        ? ds.borderWidth
+        : isDonutOrPie
+          ? 2
+          : chartType === "line"
+            ? 2
+            : 0,
     borderRadius: ds.borderRadius ?? (isDonutOrPie ? 0 : 6),
+    pointRadius: ds.pointRadius ?? (chartType === "line" ? 2 : undefined),
+    pointHoverRadius: ds.pointHoverRadius ?? (chartType === "line" ? 5 : undefined),
   }));
 
   const configOptions: any = {
@@ -55,10 +66,11 @@ function renderChart() {
     indexAxis: isHorizontal ? "y" : "x",
     plugins: {
       legend: {
-        display: isDonutOrPie,
-        position: "right",
+        display:
+          props.widget.options?.plugins?.legend?.display ?? (isDonutOrPie || chartType === "line"),
+        position: isDonutOrPie ? "right" : "top",
         labels: {
-          color: "#64748b",
+          color: "#94a3b8",
           font: { family: "Inter, system-ui, sans-serif", size: 11 },
           boxWidth: 12,
           boxHeight: 12,
@@ -76,14 +88,14 @@ function renderChart() {
         usePointStyle: true,
         callbacks: {
           label: (context: any) => {
-            const label = context.label || context.dataset.label || "";
+            const label = context.dataset.label || context.label || "";
             const val =
               context.parsed?.y !== undefined && !isHorizontal
                 ? context.parsed.y
                 : context.parsed?.x !== undefined && isHorizontal
                   ? context.parsed.x
                   : context.raw;
-            if (typeof val === "number") {
+            if (typeof val === "number" && val >= 1000) {
               return ` ${label}: ${formatMoney(val, isPrivacyMode.value)}`;
             }
             return ` ${label}: ${val}`;
@@ -101,7 +113,18 @@ function renderChart() {
       },
       y: {
         grid: { color: "rgba(100, 116, 139, 0.15)" },
-        ticks: { color: "#64748b", font: { size: 10 } },
+        ticks: {
+          color: "#64748b",
+          font: { size: 10 },
+          callback: (value: any) => {
+            if (typeof value === "number") {
+              if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+              if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+              if (value >= 10_000) return `$${(value / 1_000).toFixed(0)}k`;
+            }
+            return value;
+          },
+        },
       },
     };
   } else {
