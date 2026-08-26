@@ -172,3 +172,16 @@ When producing reports in `data/output/` and presenting to the user, ensure the 
 5. **Assumptions & Disclaimers**:
    - List all modeled assumptions clearly.
    - Include the standard financial advice disclaimer.
+
+### 7.3 Interactive HTML Dashboard Standard (Optional / On-Demand)
+When the user requests an HTML report or interactive dashboard, generate a publication-grade single-page application at `data/output/index.html` (and `data/output/<report_name>.html`) adhering to:
+1. **Design System & Tech Stack**:
+   - **Modern Dark Financial Theme**: Sleek dark slate canvas (`bg-slate-950`), clear typography (`text-slate-100` / `text-slate-400`), and glassmorphism cards (`glass-panel` with subtle backdrop blur and border).
+   - **Zero-Build CDN Libraries**: Tailwind CSS (styling), Chart.js v4 (visualizations), and Lucide Icons.
+   - **Zero Backend / Self-Contained**: Embed all extracted metrics, breakdowns, and holding tables as client-side JSON (`APP_DATA`) to ensure the file opens and functions seamlessly offline in any browser.
+2. **Standard Functional Modules**:
+   - **Top KPI Cards with Dual-Currency Switcher**: Prominently display Net Worth, Cumulative Returns, and Risk Ratios (Sortino/Sharpe/Beta) with a real-time toggle between USD ($) and CAD (C$).
+   - **Multi-Tab Navigation**: Organize dense data cleanly across dedicated tabs (e.g., Asset Allocation & Look-Through, Attribution & Factor Risk, Holdings Explorer).
+   - **Interactive Visualizations**: Render responsive donut charts (macro asset classes, tax regimes, ownership), horizontal stacked bars (ETF look-through vs. direct sector exposure), and attribution waterfall/effect bars.
+   - **Interactive Holdings Explorer**: Provide instant real-time keyword search, multi-field dropdown filters (Owner, Tax Treatment, Asset Class), column sorting (ascending/descending on click), and a dynamic total value/P&L footer.
+   - **Zero Absolute Paths Rule**: Ensure all embedded scripts, relative links, and references strictly follow the zero-absolute-paths rule.
