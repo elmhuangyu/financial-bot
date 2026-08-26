@@ -30,16 +30,42 @@ function getOutputDirForRun(runId: string): string | null {
   return null;
 }
 
+function getRunName(runDir: string): string | null {
+  const candidates = [path.join(runDir, "name.txt"), path.join(runDir, "output", "name.txt")];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      try {
+        const content = fs.readFileSync(candidate, "utf-8").trim();
+        if (content) return content;
+      } catch {
+        // Ignore read errors
+      }
+    }
+  }
+  return null;
+}
+
 // 1. List all available runs
 app.get("/api/runs", (c) => {
-  const runs: Array<{ id: string; label: string; timestamp: string; isCurrent: boolean }> = [];
+  const runs: Array<{
+    id: string;
+    name: string | null;
+    label: string;
+    timestamp: string;
+    isCurrent: boolean;
+  }> = [];
 
-  const currentDir = path.join(ROOT_DIR, "data/output");
-  if (fs.existsSync(currentDir)) {
-    const stats = fs.statSync(currentDir);
+  const currentDataDir = path.join(ROOT_DIR, "data");
+  const currentOutputDir = path.join(ROOT_DIR, "data/output");
+  if (fs.existsSync(currentOutputDir) || fs.existsSync(currentDataDir)) {
+    const stats = fs.existsSync(currentOutputDir)
+      ? fs.statSync(currentOutputDir)
+      : fs.statSync(currentDataDir);
+    const customName = getRunName(currentDataDir);
     runs.push({
       id: "current",
-      label: "Current Session Run",
+      name: customName,
+      label: customName ? `Current: ${customName}` : "Current Session Run",
       timestamp: stats.mtime.toISOString(),
       isCurrent: true,
     });
@@ -52,9 +78,11 @@ app.get("/api/runs", (c) => {
       if (d.isDirectory() && !d.name.startsWith(".")) {
         const dirPath = path.join(archivedDir, d.name);
         const stats = fs.statSync(dirPath);
+        const customName = getRunName(dirPath);
         runs.push({
           id: d.name,
-          label: `Archived: ${d.name}`,
+          name: customName,
+          label: customName || d.name,
           timestamp: stats.mtime.toISOString(),
           isCurrent: false,
         });
@@ -206,9 +234,13 @@ app.get("/api/runs/:runId/manifest", (c) => {
     });
   }
 
+  const runBaseDir =
+    runId === "current" ? path.join(ROOT_DIR, "data") : path.join(ROOT_DIR, "archived", runId);
+  const customName = getRunName(runBaseDir);
+
   const manifest: A2UIManifest = {
     schemaVersion: "1.0",
-    title: runId === "current" ? "Current Session Deliverables" : `Run: ${runId}`,
+    title: customName || (runId === "current" ? "Current Session Deliverables" : `Run: ${runId}`),
     asOfDate: new Date().toISOString().split("T")[0],
     kpis: [],
     tabs,

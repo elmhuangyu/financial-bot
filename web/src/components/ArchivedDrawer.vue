@@ -58,8 +58,8 @@ function formatDate(isoString: string): string {
               "
             >
               <div class="flex items-center gap-2 truncate">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span class="truncate">{{ run.label }}</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                <span class="truncate">{{ run.name ? `Active (${run.name})` : run.label }}</span>
               </div>
               <CheckCircle2
                 v-if="currentRunId === run.id"
@@ -93,19 +93,33 @@ function formatDate(isoString: string): string {
               :class="
                 currentRunId === run.id
                   ? 'bg-base-300 border border-primary/50 text-base-content font-semibold'
-                  : 'hover:bg-base-300/60 text-base-content/60'
+                  : 'hover:bg-base-300/60 text-base-content/70'
               "
             >
               <div class="flex items-center justify-between w-full">
-                <span class="truncate text-xs">{{ run.id }}</span>
+                <span class="truncate text-xs font-semibold text-base-content">
+                  {{ run.name || run.id }}
+                </span>
                 <CheckCircle2
                   v-if="currentRunId === run.id"
                   class="w-3.5 h-3.5 text-primary shrink-0"
                 />
               </div>
-              <span class="text-[10px] text-base-content/50 flex items-center gap-1 mt-0.5">
-                <Clock class="w-3 h-3" /> {{ formatDate(run.timestamp) }}
-              </span>
+              <div
+                class="text-[10px] text-base-content/50 flex items-center justify-between w-full mt-1"
+              >
+                <span class="flex items-center gap-1">
+                  <Clock class="w-3 h-3 text-base-content/40" />
+                  {{ formatDate(run.timestamp) }}
+                </span>
+                <span
+                  v-if="run.name"
+                  class="font-mono text-[9px] opacity-40 truncate max-w-[90px]"
+                  :title="run.id"
+                >
+                  {{ run.id }}
+                </span>
+              </div>
             </a>
           </li>
         </ul>

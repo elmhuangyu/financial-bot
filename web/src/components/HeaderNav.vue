@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useCurrency } from "../composables/useCurrency";
 import { usePrivacy } from "../composables/usePrivacy";
 import { useRuns } from "../composables/useRuns";
@@ -16,9 +17,16 @@ import {
 
 const { currentCurrency, setCurrency } = useCurrency();
 const { isPrivacyMode, togglePrivacy } = usePrivacy();
-const { currentRunId, loadRunData, isLoading } = useRuns();
+const { runs, currentRunId, loadRunData, isLoading } = useRuns();
 const { isSidebarCollapsed, toggleSidebar } = useSidebar();
 const { themes, currentTheme, setTheme } = useTheme();
+
+const currentRunBadge = computed(() => {
+  const run = runs.value.find((r) => r.id === currentRunId.value);
+  if (!run) return currentRunId.value === "current" ? "Current Session" : currentRunId.value;
+  if (run.name) return run.name;
+  return run.isCurrent ? "Current Session" : run.id;
+});
 </script>
 
 <template>
@@ -51,8 +59,11 @@ const { themes, currentTheme, setTheme } = useTheme();
             <h1 class="text-base font-bold tracking-tight text-base-content">
               Financial Intelligence
             </h1>
-            <span class="badge badge-sm badge-primary badge-outline font-semibold">
-              {{ currentRunId === "current" ? "Current Session" : currentRunId }}
+            <span
+              class="badge badge-sm badge-primary badge-outline font-semibold max-w-[200px] truncate"
+              :title="currentRunBadge"
+            >
+              {{ currentRunBadge }}
             </span>
           </div>
           <p class="text-xs text-base-content/60 hidden sm:block">

@@ -3,6 +3,7 @@ import type { A2UIManifest } from "../types/a2ui";
 
 export interface RunItem {
   id: string;
+  name?: string | null;
   label: string;
   timestamp: string;
   isCurrent: boolean;

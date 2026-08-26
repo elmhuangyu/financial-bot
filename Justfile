@@ -40,14 +40,29 @@ serve:
     pnpm --prefix web start
 
 # Archive current data directory and recreate a clean data directory
-archive:
+archive name="":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p archived
     if [ -d data ]; then
         TIMESTAMP=$(date +%Y-%m-%d-%H-%M-%S)
-        mv data "archived/${TIMESTAMP}"
-        echo "Archived data to archived/${TIMESTAMP}"
+        ARCHIVE_NAME="{{name}}"
+
+        # If no name passed via CLI argument and running in an interactive terminal, prompt the user
+        if [ -z "$ARCHIVE_NAME" ] && [ -t 0 ]; then
+            read -r -p "Enter archive name/label (optional, press Enter to skip): " ARCHIVE_NAME
+        fi
+
+        TARGET_DIR="archived/${TIMESTAMP}"
+        mv data "$TARGET_DIR"
+
+        if [ -n "$ARCHIVE_NAME" ]; then
+            echo "$ARCHIVE_NAME" > "$TARGET_DIR/name.txt"
+            echo "Archived data to $TARGET_DIR [Name: $ARCHIVE_NAME]"
+        else
+            echo "Archived data to $TARGET_DIR"
+        fi
     fi
     mkdir -p data/input data/tmp data/output
     echo "Created fresh data/ (input, tmp, output)"
+
