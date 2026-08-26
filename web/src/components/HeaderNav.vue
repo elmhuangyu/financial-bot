@@ -12,7 +12,6 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Palette,
-  Check,
 } from "lucide-vue-next";
 
 const { currentCurrency, setCurrency } = useCurrency();
@@ -115,34 +114,39 @@ const { themes, currentTheme, setTheme } = useTheme();
           </button>
         </div>
 
-        <!-- Theme Dropdown -->
+        <!-- DaisyUI Official Theme Controller Dropdown -->
         <div class="dropdown dropdown-end">
           <div
             tabindex="0"
             role="button"
-            class="btn btn-ghost btn-sm btn-square text-base-content/60 hover:text-base-content"
-            title="Select Theme"
+            class="btn btn-ghost btn-sm text-base-content/70 hover:text-base-content gap-1.5 font-normal text-xs"
           >
-            <Palette class="w-4 h-4" />
+            <Palette class="w-4 h-4 text-primary" />
+            <span class="hidden md:inline font-medium">Theme</span>
+            <svg
+              width="10px"
+              height="10px"
+              class="inline-block h-2 w-2 fill-current opacity-60 ml-0.5"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 2048 2048"
+            >
+              <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
+            </svg>
           </div>
           <ul
-            tabindex="0"
-            class="dropdown-content z-50 menu p-1.5 shadow-2xl bg-base-200 rounded-2xl w-44 border border-base-300 text-xs gap-0.5"
+            tabindex="-1"
+            class="dropdown-content bg-base-300 rounded-box z-50 w-48 p-2 shadow-2xl border border-base-300 menu text-xs gap-1 mt-2"
           >
-            <li class="menu-title text-[10px] uppercase text-base-content/50 px-2 py-1">Theme</li>
             <li v-for="t in themes" :key="t.id">
-              <a
-                @click="setTheme(t.id)"
-                class="flex items-center justify-between py-1.5 px-2.5 rounded-lg transition-all"
-                :class="
-                  currentTheme === t.id
-                    ? 'bg-primary/15 text-primary font-bold'
-                    : 'text-base-content/80 hover:bg-base-300'
-                "
-              >
-                <span>{{ t.label }}</span>
-                <Check v-if="currentTheme === t.id" class="w-3.5 h-3.5 text-primary shrink-0" />
-              </a>
+              <input
+                type="radio"
+                name="theme-dropdown"
+                class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start text-xs font-normal"
+                :aria-label="t.label"
+                :value="t.id"
+                :checked="currentTheme === t.id"
+                @change="setTheme(t.id)"
+              />
             </li>
           </ul>
         </div>

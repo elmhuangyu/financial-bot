@@ -35,7 +35,7 @@ onMounted(async () => {
   <div class="h-screen w-screen flex flex-row bg-base-100 font-sans overflow-hidden">
     <!-- Collapsible Sidebar (Drawer) -->
     <div
-      class="h-full transition-all duration-300 ease-in-out overflow-hidden z-30 shrink-0 border-r border-base-300 flex flex-col"
+      class="h-full transition-all duration-300 ease-in-out overflow-hidden shrink-0 border-r border-base-300 flex flex-col"
       :class="isSidebarCollapsed ? 'w-0 border-none' : 'w-64'"
     >
       <ArchivedDrawer />
@@ -49,7 +49,7 @@ onMounted(async () => {
       <div
         ref="scrollViewport"
         @scroll="handleScroll"
-        class="flex-1 overflow-y-auto w-full flex flex-col relative"
+        class="flex-1 overflow-y-auto w-full flex flex-col"
       >
         <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
           <div v-if="isLoading" class="flex justify-center items-center py-32">
@@ -69,27 +69,27 @@ onMounted(async () => {
             Financial Bot Modern Web Dashboard • Powered by Vue 3 + A2UI Declarative Schema + Hono
           </p>
         </footer>
-
-        <!-- Floating Back to Top Button -->
-        <Transition
-          enter-active-class="transition duration-200 ease-out"
-          enter-from-class="opacity-0 translate-y-3 scale-90"
-          enter-to-class="opacity-100 translate-y-0 scale-100"
-          leave-active-class="transition duration-150 ease-in"
-          leave-from-class="opacity-100 translate-y-0 scale-100"
-          leave-to-class="opacity-0 translate-y-3 scale-90"
-        >
-          <button
-            v-show="showBackToTop"
-            @click="scrollToTop"
-            class="fixed bottom-8 right-8 z-50 btn btn-circle btn-primary shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all text-primary-content border-none"
-            title="Back to top"
-            aria-label="Back to top"
-          >
-            <ArrowUp class="w-5 h-5" />
-          </button>
-        </Transition>
       </div>
     </div>
+
+    <!-- Floating Back to Top Button -->
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-3 scale-90"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-3 scale-90"
+    >
+      <button
+        v-show="showBackToTop"
+        @click="scrollToTop"
+        class="fixed bottom-8 right-8 z-50 btn btn-circle btn-primary shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all text-primary-content border-none"
+        title="Back to top"
+        aria-label="Back to top"
+      >
+        <ArrowUp class="w-5 h-5" />
+      </button>
+    </Transition>
   </div>
 </template>

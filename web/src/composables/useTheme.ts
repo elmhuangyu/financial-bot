@@ -17,10 +17,19 @@ export const THEMES: ThemeOption[] = [
   { id: "dark", label: "Standard Dark", isDark: true },
 ];
 
-const savedTheme = typeof localStorage !== "undefined" ? localStorage.getItem("fb_theme") : null;
-const currentTheme = ref<string>(savedTheme || "darkFinancial");
+function getInitialTheme(): string {
+  if (typeof localStorage !== "undefined") {
+    const saved = localStorage.getItem("fb_theme");
+    if (saved && THEMES.some((t) => t.id === saved)) {
+      return saved;
+    }
+  }
+  return "darkFinancial";
+}
 
-// Apply theme to DOM immediately
+const currentTheme = ref<string>(getInitialTheme());
+
+// Apply theme to DOM immediately upon module import
 if (typeof document !== "undefined") {
   document.documentElement.setAttribute("data-theme", currentTheme.value);
 }
@@ -36,16 +45,26 @@ watch(currentTheme, (newTheme) => {
 
 export function useTheme() {
   function setTheme(themeId: string) {
+    if (!THEMES.some((t) => t.id === themeId)) return;
     currentTheme.value = themeId;
     if (typeof document !== "undefined") {
       document.documentElement.setAttribute("data-theme", themeId);
-      (document.activeElement as HTMLElement)?.blur();
     }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("fb_theme", themeId);
+    }
+  }
+
+  function toggleTheme() {
+    const currentOpt = THEMES.find((t) => t.id === currentTheme.value);
+    const isDark = currentOpt ? currentOpt.isDark : true;
+    setTheme(isDark ? "light" : "darkFinancial");
   }
 
   return {
     themes: THEMES,
     currentTheme,
     setTheme,
+    toggleTheme,
   };
 }
