@@ -1,20 +1,59 @@
-# Python-generated files
+# ==============================
+# Python & Virtual Environments
+# ==============================
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
 build/
 dist/
 wheels/
-*.egg-info
-.ruff_cache
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+env/
+venv/
+ENV/
 
-# Virtual environments
-.venv
-
-# work dir
+# ==============================
+# Project Workspaces & User Data
+# ==============================
 /data/
 /archived/
 
-# Node / Web
+# ==============================
+# Node, Web & Frontend Build
+# ==============================
 node_modules/
+**/node_modules/
 web/dist/
+web/.vite/
 .pnpm-debug.log*
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================
+# Environment & Local Overrides
+# ==============================
+.env
+.env.local
+.env.*.local
+
+# ==============================
+# OS & Editor Artifacts
+# ==============================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-workspace
