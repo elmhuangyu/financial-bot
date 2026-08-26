@@ -45,6 +45,8 @@ export function useRuns() {
     currentRunId.value = runId;
     isLoading.value = true;
     error.value = null;
+    runManifest.value = null;
+    runFiles.value = [];
     try {
       const [manifestRes, filesRes] = await Promise.all([
         fetch(`/api/runs/${runId}/manifest`),
@@ -53,13 +55,19 @@ export function useRuns() {
 
       if (manifestRes.ok) {
         runManifest.value = await manifestRes.json();
+      } else {
+        runManifest.value = null;
       }
       if (filesRes.ok) {
         const fileData = await filesRes.json();
         runFiles.value = fileData.files || [];
+      } else {
+        runFiles.value = [];
       }
     } catch (e: any) {
       error.value = e.message;
+      runManifest.value = null;
+      runFiles.value = [];
     } finally {
       isLoading.value = false;
     }
