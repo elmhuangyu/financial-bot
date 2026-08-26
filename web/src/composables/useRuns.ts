@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import type { A2UIManifest } from "../types/a2ui";
 
 export interface RunItem {
   id: string;
@@ -16,7 +17,7 @@ export interface FileItem {
 
 const runs = ref<RunItem[]>([]);
 const currentRunId = ref<string>("current");
-const runSummary = ref<any>(null);
+const runManifest = ref<A2UIManifest | null>(null);
 const runFiles = ref<FileItem[]>([]);
 const isLoading = ref<boolean>(false);
 const error = ref<string | null>(null);
@@ -45,13 +46,13 @@ export function useRuns() {
     isLoading.value = true;
     error.value = null;
     try {
-      const [summaryRes, filesRes] = await Promise.all([
-        fetch(`/api/runs/${runId}/summary`),
+      const [manifestRes, filesRes] = await Promise.all([
+        fetch(`/api/runs/${runId}/manifest`),
         fetch(`/api/runs/${runId}/files`),
       ]);
 
-      if (summaryRes.ok) {
-        runSummary.value = await summaryRes.json();
+      if (manifestRes.ok) {
+        runManifest.value = await manifestRes.json();
       }
       if (filesRes.ok) {
         const fileData = await filesRes.json();
@@ -71,7 +72,7 @@ export function useRuns() {
   return {
     runs,
     currentRunId,
-    runSummary,
+    runManifest,
     runFiles,
     isLoading,
     error,

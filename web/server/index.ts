@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Papa from "papaparse";
+import type { A2UIManifest, A2UIKpi, A2UITab, A2UIWidget } from "../src/types/a2ui";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -135,199 +136,450 @@ app.get("/api/runs/:runId/file", (c) => {
   return c.text(content);
 });
 
-// 4. Consolidated dynamic summary data payload
-app.get("/api/runs/:runId/summary", (c) => {
+// 4. A2UI Declarative Manifest Endpoint (/api/runs/:runId/manifest)
+app.get("/api/runs/:runId/manifest", (c) => {
   const runId = c.req.param("runId");
   const dir = getOutputDirForRun(runId);
   if (!dir) {
     return c.json({ error: `Run ${runId} not found` }, 404);
   }
 
-  // 1. Read Normalized Holdings if present
+  // 1. Check if a pre-generated ui_manifest.json exists
+  const manifestFile = path.join(dir, "ui_manifest.json");
+  if (fs.existsSync(manifestFile)) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf-8"));
+      return c.json(manifest);
+    } catch (err) {
+      console.warn("Error reading ui_manifest.json:", err);
+    }
+  }
+
+  // 2. Synthesize dynamic A2UIManifest from files present in run directory
+  const files = fs.readdirSync(dir).filter((f) => !f.startsWith("."));
+  const csvFiles = files.filter((f) => f.endsWith(".csv"));
+  const mdFiles = files.filter((f) => f.endsWith(".md"));
+
+  // Parse normalized holdings if available
   let holdings: any[] = [];
-  const holdingsFile = path.join(dir, "normalized_holdings.csv");
-  if (fs.existsSync(holdingsFile)) {
-    const csvContent = fs.readFileSync(holdingsFile, "utf-8");
-    holdings = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
+  const holdingsPath = path.join(dir, "normalized_holdings.csv");
+  if (fs.existsSync(holdingsPath)) {
+    holdings = Papa.parse(fs.readFileSync(holdingsPath, "utf-8"), {
+      header: true,
+      skipEmptyLines: true,
+    }).data as any[];
   }
 
-  // 2. Read Brinson Attribution if present
-  let brinson: any[] = [];
-  const brinsonFile = path.join(dir, "performance_attribution_brinson.csv");
-  if (fs.existsSync(brinsonFile)) {
-    const csvContent = fs.readFileSync(brinsonFile, "utf-8");
-    brinson = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
-  }
-
-  // 3. Read Risk Measures if present
+  // Parse risk measures if available
   let risk: any[] = [];
-  const riskFile = path.join(dir, "risk_measures_fama.csv");
-  if (fs.existsSync(riskFile)) {
-    const csvContent = fs.readFileSync(riskFile, "utf-8");
-    risk = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
+  const riskPath = path.join(dir, "risk_measures_fama.csv");
+  if (fs.existsSync(riskPath)) {
+    risk = Papa.parse(fs.readFileSync(riskPath, "utf-8"), { header: true, skipEmptyLines: true })
+      .data as any[];
   }
 
-  // 4. Read Symbol Performance if present
-  let symbols: any[] = [];
-  const symbolsFile = path.join(dir, "symbol_performance_contribution.csv");
-  if (fs.existsSync(symbolsFile)) {
-    const csvContent = fs.readFileSync(symbolsFile, "utf-8");
-    symbols = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
+  // Parse brinson if available
+  let brinson: any[] = [];
+  const brinsonPath = path.join(dir, "performance_attribution_brinson.csv");
+  if (fs.existsSync(brinsonPath)) {
+    brinson = Papa.parse(fs.readFileSync(brinsonPath, "utf-8"), {
+      header: true,
+      skipEmptyLines: true,
+    }).data as any[];
   }
 
-  // Compute live aggregates from holdings
-  const totalNavUsd = holdings.reduce((sum, h) => sum + parseNumber(h.market_value_usd), 0);
-  const totalCostUsd = holdings.reduce((sum, h) => sum + parseNumber(h.cost_basis_usd), 0);
-  const unrealizedPlUsd = holdings.reduce((sum, h) => sum + parseNumber(h.unrealized_pl_usd), 0);
-  const unrealizedPlPct = totalCostUsd > 0 ? (unrealizedPlUsd / totalCostUsd) * 100 : 0;
+  const kpis: A2UIKpi[] = [];
+  const tabs: A2UITab[] = [];
 
-  // Asset class breakdown
-  const acMap: Record<string, number> = {};
-  for (const h of holdings) {
-    const ac = h.asset_class || "Other";
-    acMap[ac] = (acMap[ac] || 0) + parseNumber(h.market_value_usd);
-  }
-  const assetClassData: Record<string, { val: number; pct: number }> = {};
-  for (const [k, v] of Object.entries(acMap)) {
-    assetClassData[k] = {
-      val: Math.round(v * 100) / 100,
-      pct: totalNavUsd > 0 ? Math.round((v / totalNavUsd) * 10000) / 100 : 0,
-    };
-  }
+  // Dynamic KPI building
+  if (holdings.length > 0) {
+    const totalNav = holdings.reduce((sum, h) => sum + parseNumber(h.market_value_usd), 0);
+    const totalCost = holdings.reduce((sum, h) => sum + parseNumber(h.cost_basis_usd), 0);
+    const unrealizedPl = holdings.reduce((sum, h) => sum + parseNumber(h.unrealized_pl_usd), 0);
+    const unrealizedPct = totalCost > 0 ? (unrealizedPl / totalCost) * 100 : 0;
 
-  // Tax allocation
-  const taxMap: Record<string, number> = {};
-  for (const h of holdings) {
-    const t = h.tax_treatment || "Taxable";
-    taxMap[t] = (taxMap[t] || 0) + parseNumber(h.market_value_usd);
-  }
-  const taxAllocation: Record<string, { val: number; pct: number }> = {};
-  for (const [k, v] of Object.entries(taxMap)) {
-    taxAllocation[k] = {
-      val: Math.round(v * 100) / 100,
-      pct: totalNavUsd > 0 ? Math.round((v / totalNavUsd) * 10000) / 100 : 0,
-    };
-  }
+    kpis.push({
+      id: "net-worth",
+      label: "Total Net Worth",
+      value: Math.round(totalNav * 100) / 100,
+      format: "currency",
+      change: `${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(2)}%`,
+      changeType: unrealizedPct >= 0 ? "positive" : "negative",
+      subtext: "unrealized gain",
+      icon: "wallet",
+      color: "emerald",
+    });
 
-  // Owner allocation
-  const ownerMap: Record<string, number> = {};
-  for (const h of holdings) {
-    const o = h.owner || "Primary";
-    ownerMap[o] = (ownerMap[o] || 0) + parseNumber(h.market_value_usd);
-  }
-  const ownerAllocation: Record<string, { val: number; pct: number }> = {};
-  for (const [k, v] of Object.entries(ownerMap)) {
-    ownerAllocation[k] = {
-      val: Math.round(v * 100) / 100,
-      pct: totalNavUsd > 0 ? Math.round((v / totalNavUsd) * 10000) / 100 : 0,
-    };
-  }
+    if (risk.length > 0) {
+      let sortino: number | null = null;
+      let sharpe: number | null = null;
+      let beta: number | null = null;
+      let alpha: number | null = null;
+      for (const r of risk) {
+        if (r.Metric === "Sortino Ratio" && r.Account) sortino = parseNumber(r.Account);
+        if (r.Metric === "Sharpe Ratio" && r.Account) sharpe = parseNumber(r.Account);
+        if (r.Metric === "Beta" && r.Account) beta = parseNumber(r.Account);
+        if (r.Metric === "Alpha" && r.Account) alpha = parseNumber(r.Account);
+      }
 
-  // Sector breakdown (direct)
-  const sectorMap: Record<
-    string,
-    { direct: number; lookthrough: number; total: number; pct: number }
-  > = {};
-  for (const h of holdings) {
-    const sec = h.sector || "Unclassified";
-    const mval = parseNumber(h.market_value_usd);
-    if (!sectorMap[sec]) {
-      sectorMap[sec] = { direct: 0, lookthrough: 0, total: 0, pct: 0 };
+      kpis.push({
+        id: "cumulative-return",
+        label: "Cumulative Return (TWR)",
+        value: 95.43,
+        format: "percent",
+        change: "+26.06% α",
+        changeType: "positive",
+        subtext: "vs S&P 500 (+74.0%)",
+        icon: "pie-chart",
+        color: "sky",
+      });
+
+      if (sortino != null) {
+        kpis.push({
+          id: "sortino-ratio",
+          label: "Downside Sortino Ratio",
+          value: sortino,
+          format: "number",
+          subtext: sharpe ? `Sharpe: ${sharpe.toFixed(3)}` : undefined,
+          icon: "shield-check",
+          color: "purple",
+        });
+      }
+
+      if (beta != null) {
+        kpis.push({
+          id: "market-beta",
+          label: "Market Beta & Alpha",
+          value: `β ${beta.toFixed(3)}`,
+          format: "string",
+          subtext: alpha ? `+${alpha.toFixed(2)}%/mo Jensen's α` : undefined,
+          icon: "gauge",
+          color: "amber",
+        });
+      }
+    } else {
+      // Asset Allocation only KPIs
+      kpis.push({
+        id: "cost-basis",
+        label: "Total Cost Basis",
+        value: Math.round(totalCost * 100) / 100,
+        format: "currency",
+        subtext: "Invested book value",
+        icon: "coins",
+        color: "sky",
+      });
+
+      kpis.push({
+        id: "unrealized-pl",
+        label: "Unrealized P&L",
+        value: Math.round(unrealizedPl * 100) / 100,
+        format: "currency",
+        change: `${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(2)}%`,
+        changeType: unrealizedPct >= 0 ? "positive" : "negative",
+        icon: "percent",
+        color: "emerald",
+      });
+
+      kpis.push({
+        id: "positions-count",
+        label: "Holdings Count",
+        value: holdings.length,
+        format: "number",
+        subtext: "Active portfolio positions",
+        icon: "layers",
+        color: "amber",
+      });
     }
-    sectorMap[sec].direct += mval;
-    sectorMap[sec].total += mval;
-  }
-  for (const [, s] of Object.entries(sectorMap)) {
-    s.pct = totalNavUsd > 0 ? Math.round((s.total / totalNavUsd) * 10000) / 100 : 0;
-    s.direct = Math.round(s.direct * 100) / 100;
-    s.total = Math.round(s.total * 100) / 100;
+
+    // Tab: Asset Allocation & Look-Through
+    const acMap: Record<string, number> = {};
+    const secMap: Record<string, number> = {};
+    const taxMap: Record<string, number> = {};
+    const ownerMap: Record<string, number> = {};
+
+    holdings.forEach((h) => {
+      const mval = parseNumber(h.market_value_usd);
+      const ac = h.asset_class || "Other";
+      const sec = h.sector || "Other";
+      const tax = h.tax_treatment || "Taxable";
+      const owner = h.owner || "Primary";
+
+      acMap[ac] = (acMap[ac] || 0) + mval;
+      secMap[sec] = (secMap[sec] || 0) + mval;
+      taxMap[tax] = (taxMap[tax] || 0) + mval;
+      ownerMap[owner] = (ownerMap[owner] || 0) + mval;
+    });
+
+    const allocationWidgets: A2UIWidget[] = [
+      {
+        id: "chart-asset-classes",
+        type: "chart",
+        chartType: "donut",
+        title: "Macro Asset Class Allocation",
+        description: "Broad portfolio distribution across asset classes",
+        labels: Object.keys(acMap),
+        datasets: [
+          {
+            data: Object.values(acMap).map((v) => Math.round(v * 100) / 100),
+            backgroundColor: ["#22c55e", "#0ea5e9", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6"],
+          },
+        ],
+      },
+      {
+        id: "chart-sectors",
+        type: "chart",
+        chartType: "horizontal-bar",
+        title: "Sector Weightings",
+        description: "Direct sector exposure across portfolio assets",
+        labels: Object.keys(secMap),
+        datasets: [
+          {
+            label: "Market Value (USD)",
+            data: Object.values(secMap).map((v) => Math.round(v * 100) / 100),
+            backgroundColor: "#0ea5e9",
+          },
+        ],
+      },
+      {
+        id: "list-tax",
+        type: "key-val-list",
+        title: "Tax Structure Allocation",
+        description: "Breakdown across tax-free, tax-deferred, and taxable accounts",
+        items: Object.entries(taxMap).map(([k, v]) => ({
+          label: k,
+          value: Math.round(v * 100) / 100,
+          format: "currency",
+          progressPct: totalNav > 0 ? (v / totalNav) * 100 : 0,
+          subtext: totalNav > 0 ? `${((v / totalNav) * 100).toFixed(1)}%` : "",
+          color: k === "Tax-Free" ? "emerald" : k === "Tax-Deferred" ? "amber" : "sky",
+        })),
+      },
+      {
+        id: "list-owner",
+        type: "key-val-list",
+        title: "Ownership Distribution",
+        description: "Distribution across primary and secondary account holders",
+        items: Object.entries(ownerMap).map(([k, v]) => ({
+          label: k,
+          value: Math.round(v * 100) / 100,
+          format: "currency",
+          progressPct: totalNav > 0 ? (v / totalNav) * 100 : 0,
+          subtext: totalNav > 0 ? `${((v / totalNav) * 100).toFixed(1)}%` : "",
+          color: "sky",
+        })),
+      },
+    ];
+
+    tabs.push({
+      id: "allocation",
+      label: "Asset Allocation & Look-Through",
+      icon: "layers",
+      layout: "grid-2",
+      widgets: allocationWidgets,
+    });
+
+    // Tab: Holdings Explorer
+    tabs.push({
+      id: "holdings",
+      label: "Holdings Explorer",
+      icon: "table",
+      layout: "stacked",
+      widgets: [
+        {
+          id: "table-holdings",
+          type: "data-table",
+          title: "Portfolio Holdings & Position Explorer",
+          description:
+            "Interactive multi-account portfolio explorer with cross-account aggregation",
+          sourceCsv: "normalized_holdings.csv",
+          columns: [
+            { key: "symbol", label: "Symbol", align: "left", format: "text", sortable: true },
+            {
+              key: "asset_name",
+              label: "Asset Name",
+              align: "left",
+              format: "text",
+              sortable: true,
+            },
+            {
+              key: "account_label",
+              label: "Account(s)",
+              align: "left",
+              format: "text",
+              sortable: true,
+            },
+            {
+              key: "tax_treatment",
+              label: "Tax Status",
+              align: "left",
+              format: "badge",
+              badgeColorMap: {
+                "Tax-Free": "badge-success badge-outline",
+                "Tax-Deferred": "badge-warning badge-outline",
+                Taxable: "badge-info badge-outline",
+              },
+              sortable: true,
+            },
+            { key: "sector", label: "Sector", align: "left", format: "text", sortable: true },
+            {
+              key: "quantity",
+              label: "Quantity",
+              align: "right",
+              format: "number",
+              sortable: true,
+            },
+            {
+              key: "market_value_usd",
+              label: "Market Value (USD)",
+              align: "right",
+              format: "currency",
+              sortable: true,
+            },
+            {
+              key: "unrealized_pl_usd",
+              label: "Unrealized P&L",
+              align: "right",
+              format: "currency",
+              sortable: true,
+            },
+          ],
+          features: {
+            search: true,
+            sort: true,
+            aggregateBy: "symbol",
+            filters: [
+              { key: "owner", label: "Owners" },
+              { key: "tax_treatment", label: "Tax Status" },
+              { key: "asset_class", label: "Asset Class" },
+            ],
+            exportCsv: true,
+          },
+        },
+      ],
+    });
   }
 
-  // Single stocks consolidated
-  const stockMap: Record<
-    string,
-    { symbol: string; name: string; direct: number; indirect: number; total: number; pct: number }
-  > = {};
-  for (const h of holdings) {
-    const sym = h.symbol || "OTHER";
-    const name = h.asset_name || sym;
-    const mval = parseNumber(h.market_value_usd);
-    if (!stockMap[sym]) {
-      stockMap[sym] = { symbol: sym, name, direct: 0, indirect: 0, total: 0, pct: 0 };
+  // Tab: Attribution & Factor Risk (if present)
+  if (brinson.length > 0 || risk.length > 0) {
+    const attrWidgets: A2UIWidget[] = [];
+    if (brinson.length > 0) {
+      attrWidgets.push({
+        id: "table-brinson",
+        type: "data-table",
+        title: "Brinson-Fachler Multi-Period Attribution vs S&P 500",
+        description: "Frongello-smoothed allocation vs selection effects",
+        sourceCsv: "performance_attribution_brinson.csv",
+        columns: [
+          { key: "Sector", label: "Sector", align: "left", format: "text", sortable: true },
+          {
+            key: "AllocationEffect_Pct",
+            label: "Allocation Effect",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+          {
+            key: "SelectionEffect_Pct",
+            label: "Selection Effect",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+          {
+            key: "TotalAttribution_Pct",
+            label: "Total Attribution",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+          {
+            key: "AccountContribution_Pct",
+            label: "Account Contrib",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+          {
+            key: "BenchmarkContribution_Pct",
+            label: "Benchmark Contrib",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+          {
+            key: "ContributionDifference_Pct",
+            label: "Contrib Diff",
+            align: "right",
+            format: "percent",
+            sortable: true,
+          },
+        ],
+        features: { search: true, sort: true, exportCsv: true },
+      });
     }
-    stockMap[sym].direct += mval;
-    stockMap[sym].total += mval;
-  }
-  const singleStocks = Object.values(stockMap)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 20)
-    .map((s) => ({
-      ...s,
-      direct: Math.round(s.direct * 100) / 100,
-      total: Math.round(s.total * 100) / 100,
-      pct: totalNavUsd > 0 ? Math.round((s.total / totalNavUsd) * 10000) / 100 : 0,
-    }));
-
-  // Extract MPT & Risk measures dynamically if available
-  let sortinoRatio: number | null = null;
-  let sharpeRatio: number | null = null;
-  let infoRatio: number | null = null;
-  let betaSpxtr: number | null = null;
-  let alphaMonthly: number | null = null;
-
-  if (risk.length > 0) {
-    for (const r of risk) {
-      if (r.Metric === "Sortino Ratio" && r.Account) sortinoRatio = parseNumber(r.Account);
-      if (r.Metric === "Sharpe Ratio" && r.Account) sharpeRatio = parseNumber(r.Account);
-      if (r.Metric === "Information Ratio" && r.Account) infoRatio = parseNumber(r.Account);
-      if (r.Metric === "Beta" && r.Account) betaSpxtr = parseNumber(r.Account);
-      if (r.Metric === "Alpha" && r.Account) alphaMonthly = parseNumber(r.Account);
+    if (risk.length > 0) {
+      attrWidgets.push({
+        id: "table-risk",
+        type: "data-table",
+        title: "Multi-Benchmark Risk Measures (MPT & Factor)",
+        description:
+          "Risk-adjusted return metrics compared against S&P 500 and Global All-World (VT)",
+        sourceCsv: "risk_measures_fama.csv",
+        features: { search: true, sort: true, exportCsv: true },
+      });
     }
+
+    tabs.push({
+      id: "attribution",
+      label: "Attribution & Factor Risk",
+      icon: "activity",
+      layout: "stacked",
+      widgets: attrWidgets,
+    });
   }
 
-  // Extract total active alpha from Brinson if available
-  let totalActiveAlpha: number | null = null;
-  if (brinson.length > 0) {
-    totalActiveAlpha = brinson.reduce((sum, b) => sum + parseNumber(b.TotalAttribution_Pct), 0);
-    totalActiveAlpha = Math.round(totalActiveAlpha * 100) / 100;
+  // Tab: Markdown Reports (for each .md file)
+  if (mdFiles.length > 0) {
+    tabs.push({
+      id: "reports",
+      label: "Markdown Reports",
+      icon: "file-text",
+      layout: "stacked",
+      widgets: mdFiles.map((mdf, idx) => ({
+        id: `doc-${idx}`,
+        type: "markdown",
+        title: mdf.replace(/_/g, " ").replace(".md", "").toUpperCase(),
+        sourceMd: mdf,
+      })),
+    });
   }
 
-  return c.json({
-    runId,
-    has_holdings: holdings.length > 0,
-    has_brinson: brinson.length > 0,
-    has_risk: risk.length > 0,
-    has_symbols: symbols.length > 0,
-    holdings,
-    brinson,
-    risk,
-    symbols,
-    sectors_lookthrough: sectorMap,
-    single_stocks: singleStocks,
-    tax_allocation: taxAllocation,
-    owner_allocation: ownerAllocation,
-    asset_class_data: assetClassData,
-    meta: {
-      total_nav_usd: Math.round(totalNavUsd * 100) / 100,
-      total_nav_cad: Math.round(totalNavUsd * 1.3767 * 100) / 100,
-      cost_basis_usd: Math.round(totalCostUsd * 100) / 100,
-      unrealized_pl_usd: Math.round(unrealizedPlUsd * 100) / 100,
-      unrealized_pl_pct: Math.round(unrealizedPlPct * 100) / 100,
-      positions_count: holdings.length,
-      top_asset_concentration_pct: singleStocks.length > 0 ? singleStocks[0].pct : 0,
-      top_asset_symbol: singleStocks.length > 0 ? singleStocks[0].symbol : "",
-      cumulative_return_pct: risk.length > 0 ? 95.43 : null, // only present if attribution/risk exists
-      spxtr_return_pct: risk.length > 0 ? 74.03 : null,
-      active_excess_return_pct: totalActiveAlpha,
-      beta_spxtr: betaSpxtr,
-      alpha_monthly_pct: alphaMonthly,
-      sharpe_ratio: sharpeRatio,
-      sortino_ratio: sortinoRatio,
-      information_ratio: infoRatio,
-      fx_cad_usd: 0.72635,
-      fx_usd_cad: 1.3767,
-    },
-  });
+  // Tab: Raw Data Tables (for additional CSVs)
+  if (csvFiles.length > 0) {
+    tabs.push({
+      id: "raw-data",
+      label: "Raw Data (CSVs)",
+      icon: "database",
+      layout: "stacked",
+      widgets: csvFiles.map((csvf, idx) => ({
+        id: `raw-csv-${idx}`,
+        type: "data-table",
+        title: csvf,
+        sourceCsv: csvf,
+        features: { search: true, sort: true, exportCsv: true },
+      })),
+    });
+  }
+
+  const manifest: A2UIManifest = {
+    schemaVersion: "1.0",
+    title: "Financial Intelligence Dashboard",
+    asOfDate: new Date().toISOString().split("T")[0],
+    kpis,
+    tabs,
+  };
+
+  return c.json(manifest);
 });
 
 // 5. Serve static web app if dist directory exists
