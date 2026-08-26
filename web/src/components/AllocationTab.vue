@@ -1,23 +1,30 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useCurrency } from '../composables/useCurrency'
-import { usePrivacy } from '../composables/usePrivacy'
-import { PieChart as PieIcon, Scan, Focus, BadgeDollarSign, Users } from 'lucide-vue-next'
+import { computed } from "vue";
+import { useCurrency } from "../composables/useCurrency";
+import { usePrivacy } from "../composables/usePrivacy";
+import { PieChart as PieIcon, Scan, Focus, BadgeDollarSign, Users } from "lucide-vue-next";
 
 const props = defineProps<{
-  summary: any
-}>()
+  summary: any;
+}>();
 
-const { formatMoney } = useCurrency()
-const { isPrivacyMode } = usePrivacy()
+const { formatMoney } = useCurrency();
+const { isPrivacyMode } = usePrivacy();
 
-const assetClasses = computed(() => props.summary?.asset_class_data || {})
-const singleStocks = computed(() => props.summary?.single_stocks || [])
-const taxAllocations = computed(() => props.summary?.tax_allocation || {})
-const ownerAllocations = computed(() => props.summary?.owner_allocation || {})
-const sectors = computed(() => props.summary?.sectors_lookthrough || {})
+const assetClasses = computed(() => props.summary?.asset_class_data || {});
+const singleStocks = computed(() => props.summary?.single_stocks || []);
+const taxAllocations = computed(() => props.summary?.tax_allocation || {});
+const ownerAllocations = computed(() => props.summary?.owner_allocation || {});
+const sectors = computed(() => props.summary?.sectors_lookthrough || {});
 
-const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500', 'bg-pink-500', 'bg-purple-500']
+const colors = [
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-sky-500",
+  "bg-indigo-500",
+  "bg-pink-500",
+  "bg-purple-500",
+];
 </script>
 
 <template>
@@ -43,13 +50,19 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
                 {{ k }}
               </span>
               <span class="font-mono text-slate-100 font-bold">
-                {{ v.pct.toFixed(2) }}% 
-                <span class="text-slate-400 font-normal">({{ formatMoney(v.val, isPrivacyMode) }})</span>
+                {{ v.pct.toFixed(2) }}%
+                <span class="text-slate-400 font-normal"
+                  >({{ formatMoney(v.val, isPrivacyMode) }})</span
+                >
               </span>
             </div>
             <!-- Progress Bar -->
             <div class="w-full bg-base-300 h-2 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all" :class="colors[idx % colors.length]" :style="{ width: `${v.pct}%` }"></div>
+              <div
+                class="h-full rounded-full transition-all"
+                :class="colors[idx % colors.length]"
+                :style="{ width: `${v.pct}%` }"
+              ></div>
             </div>
           </div>
         </div>
@@ -71,8 +84,10 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
             <div class="flex justify-between text-xs">
               <span class="text-slate-300 truncate max-w-[200px]">{{ sec }}</span>
               <span class="font-mono text-slate-200 font-bold">
-                {{ s.pct.toFixed(2) }}% 
-                <span class="text-slate-400 font-normal">({{ formatMoney(s.total, isPrivacyMode) }})</span>
+                {{ s.pct.toFixed(2) }}%
+                <span class="text-slate-400 font-normal"
+                  >({{ formatMoney(s.total, isPrivacyMode) }})</span
+                >
               </span>
             </div>
             <div class="w-full bg-base-300 h-2 rounded-full overflow-hidden">
@@ -90,7 +105,9 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
           <h3 class="text-base font-bold text-white flex items-center gap-2">
             <Focus class="w-5 h-5 text-primary" /> Top Single-Asset Concentration
           </h3>
-          <p class="text-xs text-slate-400">Consolidated exposure ranking across top underlying assets</p>
+          <p class="text-xs text-slate-400">
+            Consolidated exposure ranking across top underlying assets
+          </p>
         </div>
       </div>
 
@@ -112,7 +129,9 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
               <td class="font-bold text-white">{{ s.symbol }}</td>
               <td class="text-slate-300 font-sans truncate max-w-xs">{{ s.name }}</td>
               <td class="text-right text-slate-300">{{ formatMoney(s.direct, isPrivacyMode) }}</td>
-              <td class="text-right font-bold text-white">{{ formatMoney(s.total, isPrivacyMode) }}</td>
+              <td class="text-right font-bold text-white">
+                {{ formatMoney(s.total, isPrivacyMode) }}
+              </td>
               <td class="text-right font-bold text-primary">{{ s.pct.toFixed(2) }}%</td>
             </tr>
           </tbody>
@@ -132,14 +151,22 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
             <div class="flex justify-between text-xs">
               <span class="text-slate-300">{{ tax }}</span>
               <span class="font-mono text-slate-100 font-bold">
-                {{ t.pct.toFixed(2) }}% 
-                <span class="text-slate-400 font-normal">({{ formatMoney(t.val, isPrivacyMode) }})</span>
+                {{ t.pct.toFixed(2) }}%
+                <span class="text-slate-400 font-normal"
+                  >({{ formatMoney(t.val, isPrivacyMode) }})</span
+                >
               </span>
             </div>
             <div class="w-full bg-base-300 h-2 rounded-full overflow-hidden">
-              <div 
+              <div
                 class="h-full rounded-full"
-                :class="tax === 'Tax-Free' ? 'bg-emerald-500' : tax === 'Tax-Deferred' ? 'bg-amber-500' : 'bg-sky-500'"
+                :class="
+                  tax === 'Tax-Free'
+                    ? 'bg-emerald-500'
+                    : tax === 'Tax-Deferred'
+                      ? 'bg-amber-500'
+                      : 'bg-sky-500'
+                "
                 :style="{ width: `${t.pct}%` }"
               ></div>
             </div>
@@ -153,12 +180,18 @@ const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-indigo-500',
           <Users class="w-4 h-4 text-sky-400" /> Account Owner Allocation
         </h4>
         <div class="space-y-3">
-          <div v-for="[owner, o] in Object.entries(ownerAllocations)" :key="owner" class="space-y-1">
+          <div
+            v-for="[owner, o] in Object.entries(ownerAllocations)"
+            :key="owner"
+            class="space-y-1"
+          >
             <div class="flex justify-between text-xs">
               <span class="text-slate-300">{{ owner }}</span>
               <span class="font-mono text-slate-100 font-bold">
-                {{ o.pct.toFixed(2) }}% 
-                <span class="text-slate-400 font-normal">({{ formatMoney(o.val, isPrivacyMode) }})</span>
+                {{ o.pct.toFixed(2) }}%
+                <span class="text-slate-400 font-normal"
+                  >({{ formatMoney(o.val, isPrivacyMode) }})</span
+                >
               </span>
             </div>
             <div class="w-full bg-base-300 h-2 rounded-full overflow-hidden">

@@ -2,13 +2,15 @@
 default:
     @just --list
 
-# Format code with ruff
+# Format code with ruff (Python) and oxfmt (JS/TS/Vue)
 fmt:
     uvx ruff format
+    pnpm --prefix web fmt
 
-# Lint with ruff and verify no hardcoded absolute paths
+# Lint with ruff (Python) and oxlint (JS/TS/Vue) and verify no hardcoded absolute paths
 lint:
     uvx ruff check
+    pnpm --prefix web lint
     @echo "Checking for hardcoded absolute paths or file:// links..."
     @if git grep --untracked -nE 'file:///|/home/[a-zA-Z0-9_.-]+|/Users/[a-zA-Z0-9_.-]+' -- ':!Justfile' >/dev/null 2>&1; then \
         echo "ERROR: Hardcoded absolute paths or file:// URIs detected:"; \

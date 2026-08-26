@@ -94,19 +94,19 @@ class HoldingEnricher:
           if overview and isinstance(overview, dict) and overview.get("legalType"):
             is_fund = True
             quote_type = (
-              "ETF"
-              if "Exchange Traded" in str(overview.get("legalType", ""))
-              else "MUTUALFUND"
+              "ETF" if "Exchange Traded" in str(overview.get("legalType", "")) else "MUTUALFUND"
             )
             category = overview.get("categoryName") or category
             fund_family = overview.get("family") or fund_family
             industry = overview.get("legalType") or industry or "Exchange Traded Fund"
-        except (KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException):
+        except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
           pass
 
         # 2. Strict fallback only if funds_data is unavailable but legal name explicitly specifies ETF/Index Fund
-        if not is_fund and quote_type == "EQUITY" and re.search(
-          r"\b(ETF|Index Fund)\b", name, re.IGNORECASE
+        if (
+          not is_fund
+          and quote_type == "EQUITY"
+          and re.search(r"\b(ETF|Index Fund)\b", name, re.IGNORECASE)
         ):
           quote_type = "ETF"
           is_fund = True
@@ -129,7 +129,7 @@ class HoldingEnricher:
           "fundFamily": fund_family,
           "is_fund": is_fund or (quote_type in ["ETF", "MUTUALFUND"]),
         }
-      except (KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException):
+      except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
         self._yf_cache[sym] = {
           "name": sym,
           "quoteType": "EQUITY",
@@ -240,8 +240,7 @@ class HoldingEnricher:
         if any(
           b in category for b in ["Large Blend", "Large Growth", "Large Value", "Mid-Cap", "Small"]
         ) or any(
-          k in asset_name.lower()
-          for k in ["s&p 500", "s&p500", "spdr portfolio s&p", "nasdaq"]
+          k in asset_name.lower() for k in ["s&p 500", "s&p500", "spdr portfolio s&p", "nasdaq"]
         ):
           asset_subclass = "Broad Index ETF"
           sector = f"Broad Market / {category}" if category else "Broad Market / Large Blend"
