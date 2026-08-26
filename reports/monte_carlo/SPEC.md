@@ -89,14 +89,21 @@ Defines the complete end-to-end technical, mathematical, and simulation workflow
    $$\text{MDD}_k = \max_{0 \le t \le T} \left( \frac{M_k(t) - V_k(t)}{M_k(t)} \right)$$
    Compute median MDD, mean MDD, and worst-case MDD across all $N$ paths.
 4. **Compound Annual Growth Rate (CAGR) Percentiles**:
-   $$\text{CAGR}_k = \left(\frac{V_k(T)}{V_0}\right)^{1/T} - 1$$
+   For any milestone year $t \ge 1$ and across all tracked percentiles $p \in \{\text{Min}, P_5, P_{10}, P_{25}, P_{50}, P_{75}, P_{90}, P_{95}, \text{Mean}, \text{Max}\}$:
+   $$\text{CAGR}_p(t) = \left(\frac{V_p(t)}{V_0}\right)^{1/t} - 1$$
+   For $t = 0$, $\text{CAGR} = 0.0\%$.
 
 ### 3.4 Standard Operating Procedure (SOP)
 1. **Model Execution**: Run `src.core.monte_carlo.MonteCarloEngine` via ad-hoc runner or permanent pipeline.
-2. **Output CSV Generation**: Export summary statistics, horizon risk matrices, and trajectory tables (including `min_usd`, `p5_usd`, `p10_usd`, `p25_usd`, `p50_median_usd`, `p75_usd`, `p90_usd`, `mean_usd`) to `data/output/`.
+2. **Output CSV Generation**: Export summary statistics, horizon risk matrices, and trajectory tables (including wealth values and corresponding annualized compound growth rates: `min_usd`, `min_cagr_pct`, `p5_usd`, `p5_cagr_pct`, `p10_usd`, `p10_cagr_pct`, `p25_usd`, `p25_cagr_pct`, `p50_median_usd`, `p50_cagr_pct`, `p75_usd`, `p75_cagr_pct`, `p90_usd`, `p90_cagr_pct`, `p95_usd`, `p95_cagr_pct`, `mean_usd`, `mean_cagr_pct`, `max_usd`, `max_cagr_pct`) to `data/output/`.
 3. **Markdown Report Generation**: Render `data/output/monte_carlo_report.md` following Section 4.
 4. **Interactive Dashboard Manifest (`data/output/ui_manifest.json`)**:
    - **Zero Hardcoding Rule**: All KPI values, badges, and card subtexts MUST be dynamically derived from the generated output CSVs. Never hardcode mock/static numbers.
+   - **Correct CSV Source Binding**:
+     - `table-milestones`: MUST bind `sourceCsv` to `"monte_carlo_percentile_trajectories.csv"` (contains milestone percentiles and annualized CAGR metrics `p5_usd`, `p5_cagr_pct`, `p10_usd`, `p10_cagr_pct`, `p50_median_usd`, `p50_cagr_pct`, `p90_usd`, `p90_cagr_pct`, `mean_usd`, `mean_cagr_pct` across years), NEVER to sample path files.
+     - `table-horizon-risks`: MUST bind `sourceCsv` to `"monte_carlo_horizon_risks.csv"` matching exact column keys (`horizon_years`, `prob_of_principal_loss_pct`, `p5_worst_case_value_usd`, `p5_cumulative_return_pct`, `median_portfolio_value_usd`, `median_cagr_pct`).
+   - **Full-Width Table Layout (`colSpan: 2`)**:
+     - In `"grid-2"` tabs, wide tables (e.g. multi-horizon risk tables, asset correlation matrices, milestone distributions with CAGRs) MUST specify `"colSpan": 2` to occupy full container width and eliminate unnecessary horizontal scrolling.
    - **Full Spectrum Trajectory Chart**: The 30-year Growth Cone line chart must include the full distribution from **Optimistic (P90)** down to **Conservative (P10)**, **Downside Tail (P5)**, and **Simulated Worst Path (Min)**.
 
 ---
@@ -138,10 +145,10 @@ Defines the publication-grade deliverables generated in `data/output/`.
 
 ---
 
-## 3. Growth Milestones (Trajectory Percentiles)
+## 3. Growth Milestones (Trajectory Percentiles & Annualized CAGRs)
 | Milestone | Simulated Worst (Min) | Downside Tail (P5) | Conservative (P10) | Median (P50) | Optimistic (P90) | Mean |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-<!-- Dynamically render milestones including Min and P5 worst cases -->
+<!-- Dynamically render milestones including dollar values and annualized CAGR percentages: e.g. $972k (+8.05%) -->
 
 ---
 
@@ -179,10 +186,10 @@ pie title Initial Target Portfolio Allocation
 - Standard financial simulation disclaimer.
 ```
 
-### 4.2 Data Deliverables
-- `data/output/monte_carlo_summary.csv`
-- `data/output/monte_carlo_horizon_risks.csv`
-- `data/output/monte_carlo_percentile_trajectories.csv`
-- `data/output/monte_carlo_asset_stats.csv`
-- `data/output/monte_carlo_asset_correlations.csv`
-- `data/output/ui_manifest.json` (A2UI interactive dashboard manifest with dynamic KPIs and Growth Fan datasets)
+### 4.2 Data Deliverables & Schemas
+- **`data/output/monte_carlo_summary.csv`**: `metric,value`
+- **`data/output/monte_carlo_horizon_risks.csv`**: `horizon_years,prob_of_principal_loss_pct,p5_worst_case_value_usd,p5_cumulative_return_pct,median_portfolio_value_usd,median_cagr_pct`
+- **`data/output/monte_carlo_percentile_trajectories.csv`**: `year,p5_usd,p5_cagr_pct,p10_usd,p10_cagr_pct,p25_usd,p25_cagr_pct,p50_median_usd,p50_cagr_pct,p75_usd,p75_cagr_pct,p90_usd,p90_cagr_pct,p95_usd,p95_cagr_pct,mean_usd,mean_cagr_pct,min_usd,min_cagr_pct,max_usd,max_cagr_pct`
+- **`data/output/monte_carlo_asset_stats.csv`**: `symbol,asset_name,target_weight_pct,starting_capital_usd,expected_return_pct,volatility_pct,haircut_applied_pct,calibration_rationale`
+- **`data/output/monte_carlo_asset_correlations.csv`**: Empirical cross-asset correlation matrix ($R_{ij}$)
+- **`data/output/ui_manifest.json`**: A2UI interactive dashboard manifest (with dynamic KPIs, growth fan line chart, and `colSpan: 2` wide data tables)

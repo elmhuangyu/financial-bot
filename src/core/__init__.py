@@ -1,5 +1,11 @@
 """Financial Bot Core Package."""
 
+from src.core.efficient_frontier import (
+  EfficientFrontierEngine,
+  EfficientFrontierResult,
+  FrontierPoint,
+  PortfolioStats,
+)
 from src.core.lookthrough import (
   ETFLookThroughEngine,
   LookThroughSectorAllocation,
@@ -17,12 +23,16 @@ from src.core.parsers.manulife import ManulifeParser
 __all__ = [
   "Account",
   "ETFLookThroughEngine",
+  "EfficientFrontierEngine",
+  "EfficientFrontierResult",
   "EnrichedHolding",
+  "FrontierPoint",
   "IBKRParser",
   "IBKRStatement",
   "LookThroughSectorAllocation",
   "LookThroughStockExposure",
   "ManulifeParser",
+  "PortfolioStats",
   "Position",
   "parse_ibkr_csv",
 ]

@@ -113,8 +113,21 @@ This skill guides the AI Agent in producing `data/output/ui_manifest.json` on-de
 }
 ```
 
+### Tab Layouts & Widget Sizing
+- **Tab `layout`**:
+  - `"grid-2"`: 2-column responsive grid on desktop (`lg:grid-cols-2`). By default, each widget takes 1 column (1/2 width, 50%).
+  - `"stacked"`: 1-column vertical stack where all widgets take full width (100%).
+- **Widget `colSpan`**:
+  - `colSpan: 2` (Optional, number): When used in a `"grid-2"` layout tab, causes the widget to span across both columns (100% full width).
+  - **Best Practice for Wide Tables**: Any data table with many columns (e.g., >= 5 columns or correlation matrices) placed inside a `"grid-2"` tab should specify `"colSpan": 2` to prevent horizontal scrolling and ensure clean readability.
+
 ### Supported Widget Types & Properties
 
+- **Common Widget Properties**:
+  - `id`: unique string identifier
+  - `type`: `"chart"` | `"holdings-table"` | `"data-table"` | `"key-val-list"` | `"markdown"`
+  - `title`: string
+  - `colSpan` (optional): `2` to span full width in a `"grid-2"` tab.
 - **`chart`**:
   - `chartType`: `"donut"` | `"pie"` | `"bar"` | `"horizontal-bar"` | `"line"`
   - `labels`: array of string categories/dates
