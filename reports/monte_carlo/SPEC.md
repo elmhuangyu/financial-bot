@@ -64,47 +64,64 @@ Defines the complete end-to-end technical, mathematical, and simulation workflow
    - **Portfolio Aggregate Expected Return and Volatility**:
      $$\mu_{\text{port}} = \mathbf{w}^T \boldsymbol{\mu}, \quad \sigma_{\text{port}} = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}$$
 
-### 3.2 Correlated Multivariate Geometric Brownian Motion (Cholesky + GBM)
-1. Perform Cholesky factorization on the empirical correlation matrix $\mathbf{R}$:
-   $$\mathbf{R} = \mathbf{L} \mathbf{L}^T$$
-   where $\mathbf{L}$ is the lower triangular matrix.
-2. For each simulation path $k \in \{1, \dots, N\}$ and each discrete trading day step $\Delta t = 1/252$:
-   - Generate independent standard normal random shock vector $\mathbf{Z}_{\text{uncorr}} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$.
-   - Induce cross-asset empirical correlation:
-     $$\mathbf{Z}_{\text{corr}} = \mathbf{L} \mathbf{Z}_{\text{uncorr}}$$
-   - Update individual asset values using the exact SDE solution under Ito's Lemma:
+### 3.2 Stochastic Modeling Formulations
+
+The engine supports multiple rigorous stochastic processes to capture both baseline market growth and extreme fat-tail downside scenarios:
+
+1. **Multivariate Correlated Geometric Brownian Motion (GBM - Baseline)**:
+   - Perform Cholesky factorization on the empirical correlation matrix $\mathbf{R}$: $\mathbf{R} = \mathbf{L} \mathbf{L}^T$.
+   - For each step $\Delta t = 1/252$, generate uncorrelated standard normal shocks $\mathbf{Z}_{\text{uncorr}} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ and induce correlation $\mathbf{Z}_{\text{corr}} = \mathbf{L} \mathbf{Z}_{\text{uncorr}}$.
+   - Exact SDE solution under Ito's Lemma:
      $$S_{i, t+\Delta t} = S_{i, t} \exp\left( \left(\mu_i - \frac{1}{2}\sigma_i^2\right)\Delta t + \sigma_i \sqrt{\Delta t} Z_{\text{corr}, i} \right)$$
-3. Apply periodic rebalancing to restore target allocation weights $\mathbf{w}$ at designated step intervals (e.g. annual rebalancing at $\text{step} \pmod{252} = 0$).
+
+2. **Multivariate Student's $t$ Copula (Fat-Tail Stress Testing)**:
+   - Addresses leptokurtosis (fat tails) and joint crash dependence without parameter overfitting.
+   - For degrees of freedom $\nu \in [4, 6]$ (default $\nu = 5.0$), draw a chi-square random variable $W \sim \chi^2(\nu)$ and scale the correlated shock:
+     $$\mathbf{X}_{\text{corr}} = \sqrt{\frac{\nu - 2}{W}} \mathbf{L} \mathbf{Z}_{\text{uncorr}}$$
+   - Scaling by $\sqrt{\frac{\nu - 2}{W}}$ ensures $\operatorname{Var}(\mathbf{X}_{\text{corr}}) = 1.0$, injecting pure excess kurtosis and joint tail risk without artificially inflating the underlying calibrated volatility $\sigma_i$.
+
+3. **Two-State Markov Regime-Switching Model (Macro Economic Cycles)**:
+   - State 0 (Calm / Expansion, ~85% probability): Standard volatility $\sigma_i$ and baseline drift $\mu_i$.
+   - State 1 (Crisis / Liquidity Shock, ~15% probability): Volatility scaled by factor (e.g. $2.0 \times \sigma_i$) and drift reduced (e.g. $\mu_i - 15\%$).
+   - Transition probability matrix $P$: $p_{00} = 0.96$ (mean calm duration ~1 month), $p_{11} = 0.80$ (mean crisis duration ~1 week).
+
+4. **Periodic Rebalancing**:
+   - Restore target allocation weights $\mathbf{w}$ at designated step intervals (e.g. annual rebalancing at $\text{step} \pmod{252} = 0$).
 
 ### 3.3 Risk, Loss Probabilities & Downside Analytics
 1. **Multi-Horizon Loss Probability Matrix**:
    For investment horizons $h \in \{1, 2, 3, 5, 7, 10, 15, 20, 25, 30\}$ years:
    $$\mathbb{P}(\text{Loss}_h) = \frac{1}{N} \sum_{k=1}^N \mathbb{I}\left( V_k(h) < V_0 \right)$$
-   Compute downside percentiles ($P_5$, $P_{10}$) and cumulative downside returns.
-2. **Worst-Case & Extreme Downside Tail Tracking**:
+2. **Conditional Value at Risk (CVaR / Expected Shortfall at 95% Confidence)**:
+   Quantifies the average loss severity conditional on the outcome falling into the worst 5% tail:
+   $$\text{CVaR}_{95\%}(t) = \mathbb{E}\left[ V(t) \;\Big|\; V(t) \le P_5(t) \right]$$
+   **Practical Applications in Wealth Management**:
+   - **Emergency Buffer Sizing**: Establish liquid cash/short-term bond buffers sized to $V_0 - \text{CVaR}_{95\%}(1Y)$ to avoid forced liquidation during market bottoms.
+   - **Sleep-at-Night Risk Tolerance**: Test whether the investor can emotionally and financially withstand the average bottom-5% portfolio drawdown without panic-selling.
+   - **Rebalancing Trigger**: Use the CVaR boundary as a signal for aggressive mean-reversion rebalancing into undervalued risky assets.
+   - **Retirement Safe Withdrawal Stress-Testing**: Ensure safe withdrawal schedules do not cause premature portfolio ruin under sequence-of-returns shocks reaching CVaR depths.
+3. **Worst-Case & Extreme Downside Tail Tracking**:
    - At each milestone year and at terminal horizon $T$, record both the **5th percentile downside tail ($P_5$)** and the **simulated minimum path ($\text{Min}$)**:
      $$\text{Min}(t) = \min_{1 \le k \le N} V_k(t), \quad P_5(t) = \text{Percentile}(V(t), 5)$$
-3. **Maximum Drawdown (MDD) Tracking**:
+4. **Maximum Drawdown (MDD) Tracking**:
    For each trajectory $k$, track running peak $M_k(t) = \max_{0 \le \tau \le t} V_k(\tau)$ and peak-to-trough drop:
    $$\text{MDD}_k = \max_{0 \le t \le T} \left( \frac{M_k(t) - V_k(t)}{M_k(t)} \right)$$
-   Compute median MDD, mean MDD, and worst-case MDD across all $N$ paths.
-4. **Compound Annual Growth Rate (CAGR) Percentiles**:
+5. **Compound Annual Growth Rate (CAGR) Percentiles**:
    For any milestone year $t \ge 1$ and across all tracked percentiles $p \in \{\text{Min}, P_5, P_{10}, P_{25}, P_{50}, P_{75}, P_{90}, P_{95}, \text{Mean}, \text{Max}\}$:
    $$\text{CAGR}_p(t) = \left(\frac{V_p(t)}{V_0}\right)^{1/t} - 1$$
    For $t = 0$, $\text{CAGR} = 0.0\%$.
 
 ### 3.4 Standard Operating Procedure (SOP)
-1. **Model Execution**: Run `src.core.monte_carlo.MonteCarloEngine` via ad-hoc runner or permanent pipeline.
-2. **Output CSV Generation**: Export summary statistics, horizon risk matrices, and trajectory tables (including wealth values and corresponding annualized compound growth rates: `min_usd`, `min_cagr_pct`, `p5_usd`, `p5_cagr_pct`, `p10_usd`, `p10_cagr_pct`, `p25_usd`, `p25_cagr_pct`, `p50_median_usd`, `p50_cagr_pct`, `p75_usd`, `p75_cagr_pct`, `p90_usd`, `p90_cagr_pct`, `p95_usd`, `p95_cagr_pct`, `mean_usd`, `mean_cagr_pct`, `max_usd`, `max_cagr_pct`) to `data/output/`.
-3. **Markdown Report Generation**: Render `data/output/monte_carlo_report.md` following Section 4.
+1. **Model Execution**: Run `src.core.monte_carlo.MonteCarloEngine` across both Baseline (GBM) and Fat-Tail Stress Testing (Student's $t$, $\nu=5$).
+2. **Output CSV Generation**: Export summary statistics, horizon risk matrices (with CVaR 95%), and trajectory tables (including wealth values and corresponding annualized compound growth rates: `min_usd`, `min_cagr_pct`, `p5_usd`, `p5_cagr_pct`, `p10_usd`, `p10_cagr_pct`, `p25_usd`, `p25_cagr_pct`, `p50_median_usd`, `p50_cagr_pct`, `p75_usd`, `p75_cagr_pct`, `p90_usd`, `p90_cagr_pct`, `p95_usd`, `p95_cagr_pct`, `mean_usd`, `mean_cagr_pct`, `max_usd`, `max_cagr_pct`) to `data/output/`.
+3. **Markdown Report Generation**: Render `data/output/monte_carlo_report.md` following Section 4 (including Baseline vs Fat-Tail Stress Test scenario comparison).
 4. **Interactive Dashboard Manifest (`data/output/ui_manifest.json`)**:
-   - **Zero Hardcoding Rule**: All KPI values, badges, and card subtexts MUST be dynamically derived from the generated output CSVs. Never hardcode mock/static numbers.
+   - **Zero Hardcoding Rule**: All KPI values, badges, and card subtexts MUST be dynamically derived from the generated output CSVs.
    - **Correct CSV Source Binding**:
-     - `table-milestones`: MUST bind `sourceCsv` to `"monte_carlo_percentile_trajectories.csv"` (contains milestone percentiles and annualized CAGR metrics `p5_usd`, `p5_cagr_pct`, `p10_usd`, `p10_cagr_pct`, `p50_median_usd`, `p50_cagr_pct`, `p90_usd`, `p90_cagr_pct`, `mean_usd`, `mean_cagr_pct` across years), NEVER to sample path files.
-     - `table-horizon-risks`: MUST bind `sourceCsv` to `"monte_carlo_horizon_risks.csv"` matching exact column keys (`horizon_years`, `prob_of_principal_loss_pct`, `p5_worst_case_value_usd`, `p5_cumulative_return_pct`, `median_portfolio_value_usd`, `median_cagr_pct`).
+     - `table-milestones`: MUST bind `sourceCsv` to `"monte_carlo_percentile_trajectories.csv"` (contains milestone percentiles and annualized CAGR metrics).
+     - `table-horizon-risks`: MUST bind `sourceCsv` to `"monte_carlo_horizon_risks.csv"` matching exact column keys (`horizon_years`, `prob_of_principal_loss_pct`, `p5_worst_case_value_usd`, `cvar_95_worst_case_value_usd`, `p5_cumulative_return_pct`, `cvar_95_cumulative_return_pct`, `median_portfolio_value_usd`, `median_cagr_pct`).
    - **Full-Width Table Layout (`colSpan: 2`)**:
-     - In `"grid-2"` tabs, wide tables (e.g. multi-horizon risk tables, asset correlation matrices, milestone distributions with CAGRs) MUST specify `"colSpan": 2` to occupy full container width and eliminate unnecessary horizontal scrolling.
-   - **Full Spectrum Trajectory Chart**: The 30-year Growth Cone line chart must include the full distribution from **Optimistic (P90)** down to **Conservative (P10)**, **Downside Tail (P5)**, and **Simulated Worst Path (Min)**.
+     - In `"grid-2"` tabs, wide tables MUST specify `"colSpan": 2` to occupy full container width and eliminate horizontal scrolling.
 
 ---
 
@@ -119,7 +136,7 @@ Defines the publication-grade deliverables generated in `data/output/`.
 
 **Portfolio Baseline**: $<Initial_Value_USD> USD  
 **Historical Calibration Window**: <Start_Date> to <End_Date>  
-**Simulation Scale**: <N> Iterations $\times$ <T> Years with Correlated GBM (Cholesky) & Annual Rebalancing  
+**Simulation Scale**: <N> Iterations $\times$ <T> Years with Correlated GBM (Cholesky), Student's t ($\nu=5$) Stress Testing & Annual Rebalancing  
 **Deliverable CSVs**:
 - [`monte_carlo_summary.csv`](monte_carlo_summary.csv)
 - [`monte_carlo_horizon_risks.csv`](monte_carlo_horizon_risks.csv)
@@ -132,35 +149,42 @@ Defines the publication-grade deliverables generated in `data/output/`.
 ## 1. Executive Summary
 - **Initial Portfolio Net Worth**: $<Initial_Value_USD> USD
 - **Expected Annual Return & Volatility**: <Ann_Return>% / <Ann_Vol>%
-- **Short-Term Downside Risk (1-Year Loss Probability)**: <1Y_Loss_Prob>% (5th percentile: $<1Y_P5_USD>, <1Y_P5_Return>%)
+- **Short-Term Downside Risk (1-Year Loss Probability)**: <1Y_Loss_Prob>% (5th percentile: $<1Y_P5_USD>, <1Y_P5_Return>%; $CVaR_{95\%}$: $<1Y_CVaR_USD>, <1Y_CVaR_Return>%)
 - **Maximum Drawdown Exposure (Median / Worst Crash)**: <Median_MDD>% / <Worst_MDD>%
 - **Terminal Outcomes (Median P50 / Conservative P10)**: $<Median_Final_USD> (<Median_CAGR>%) / $<P10_Final_USD> (<P10_CAGR>%)
 
 ---
 
-## 2. Multi-Horizon Loss Probability & Downside Analysis
-| Investment Horizon | Loss Probability (< $V_0) | 5th Percentile (Downside Value) | Downside Cum. Return | Median Value (USD) | Median CAGR |
-| :--- | :---: | :---: | :---: | :---: | :---: |
+## 2. Baseline (GBM) vs Fat-Tail Stress Testing (Student's t, $\nu=5$) Comparison
+| Metric / Stress Scenario | Gaussian Baseline (GBM) | Student's t Fat-Tail ($\nu=5$) | Stress Impact / Delta |
+| :--- | :---: | :---: | :---: |
+<!-- Dynamically compare baseline vs fat-tail stress metrics -->
+
+---
+
+## 3. Multi-Horizon Loss Probability & Downside Analysis (with CVaR Expected Shortfall)
+| Investment Horizon | Loss Probability (< $V_0) | 5th Percentile ($P_5$ VaR) | $CVaR_{95\%}$ (Expected Shortfall) | Downside Cum. Return | Median Value (USD) | Median CAGR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 <!-- Dynamically render horizon matrix -->
 
 ---
 
-## 3. Growth Milestones (Trajectory Percentiles & Annualized CAGRs)
+## 4. Growth Milestones (Trajectory Percentiles & Annualized CAGRs)
 | Milestone | Simulated Worst (Min) | Downside Tail (P5) | Conservative (P10) | Median (P50) | Optimistic (P90) | Mean |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-<!-- Dynamically render milestones including dollar values and annualized CAGR percentages: e.g. $972k (+8.05%) -->
+<!-- Dynamically render milestones including dollar values and annualized CAGR percentages -->
 
 ---
 
-## 4. Asset Allocation & Empirical Covariance Matrix (Post-2021)
-### 4.1 Asset Parameters (Post-2021 Calibration)
+## 5. Asset Allocation & Empirical Covariance Matrix (Post-2021)
+### 5.1 Asset Parameters (Post-2021 Calibration)
 | Symbol | Asset Name | Target Weight | Starting Capital (USD) | Annualized Expected Return ($\mu_i$) | Annualized Volatility ($\sigma_i$) | Calibration Rationale |
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
 <!-- Dynamically iterate assets -->
 | **<Symbol>** | <Asset_Name> | <Weight>% | $<Starting_USD> | **<Expected_Return>%** | **<Volatility>%** | <Rationale> |
 | **Total** | **Portfolio Weighted** | **100.0%** | **$<Total_USD>** | **<Portfolio_Return>%** | **<Portfolio_Vol>%** | Composite Calibration |
 
-### 4.2 Empirical Asset Correlation Matrix ($\mathbf{R}$)
+### 5.2 Empirical Asset Correlation Matrix ($\mathbf{R}$)
 | Asset | <Symbol_1> | <Symbol_2> | ... |
 | :--- | :---: | :---: | :---: |
 <!-- Dynamically render correlation matrix -->
@@ -173,22 +197,22 @@ pie title Initial Target Portfolio Allocation
 
 ---
 
-## 5. Critical Risk & Downside Takeaways
+## 6. Critical Risk & Fat-Tail Downside Takeaways
 - Discussion on short-term loss probabilities vs long-term compounding.
-- Inevitability of interim peak-to-trough drawdowns during long-term holding.
-- Downside tail analysis (P5 and Min paths) and emotional resilience requirements.
+- Comparison between Gaussian normal shocks vs Student's t heavy-tailed shocks.
+- Importance of $CVaR_{95\%}$ (Expected Shortfall) for tail-risk budgeting.
 - Rebalancing volatility harvesting benefits.
 
 ---
 
-## 6. Model Assumptions & Disclaimers
-- Correlated Multivariate Geometric Brownian Motion formulation ($dS_i = \mu_i S_i dt + \sigma_i S_i dW_i$ via $\mathbf{Z}_{\text{corr}} = \mathbf{L} \mathbf{Z}_{\text{uncorr}}$).
+## 7. Model Assumptions & Disclaimers
+- Correlated Multivariate Geometric Brownian Motion & Student's t copula formulation.
 - Standard financial simulation disclaimer.
 ```
 
 ### 4.2 Data Deliverables & Schemas
-- **`data/output/monte_carlo_summary.csv`**: `metric,value`
-- **`data/output/monte_carlo_horizon_risks.csv`**: `horizon_years,prob_of_principal_loss_pct,p5_worst_case_value_usd,p5_cumulative_return_pct,median_portfolio_value_usd,median_cagr_pct`
+- **`data/output/monte_carlo_summary.csv`**: `metric,baseline_gbm,t_student_stress,difference`
+- **`data/output/monte_carlo_horizon_risks.csv`**: `horizon_years,prob_of_principal_loss_pct,p5_worst_case_value_usd,cvar_95_worst_case_value_usd,p5_cumulative_return_pct,cvar_95_cumulative_return_pct,median_portfolio_value_usd,median_cagr_pct`
 - **`data/output/monte_carlo_percentile_trajectories.csv`**: `year,p5_usd,p5_cagr_pct,p10_usd,p10_cagr_pct,p25_usd,p25_cagr_pct,p50_median_usd,p50_cagr_pct,p75_usd,p75_cagr_pct,p90_usd,p90_cagr_pct,p95_usd,p95_cagr_pct,mean_usd,mean_cagr_pct,min_usd,min_cagr_pct,max_usd,max_cagr_pct`
 - **`data/output/monte_carlo_asset_stats.csv`**: `symbol,asset_name,target_weight_pct,starting_capital_usd,expected_return_pct,volatility_pct,haircut_applied_pct,calibration_rationale`
 - **`data/output/monte_carlo_asset_correlations.csv`**: Empirical cross-asset correlation matrix ($R_{ij}$)

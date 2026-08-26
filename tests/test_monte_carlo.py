@@ -79,3 +79,53 @@ def test_monte_carlo_simulation_run(sample_returns_df):
   assert "mean_final_value" in res.summary_metrics
   assert "mean_max_drawdown" in res.summary_metrics
   assert "year_1" in res.horizon_loss_probabilities
+  assert "year_1" in res.horizon_cvar_95
+  assert "cvar_95_final_value" in res.summary_metrics
+
+
+def test_monte_carlo_t_student_simulation(sample_returns_df):
+  weights = {"ASSET_A": 0.5, "ASSET_B": 0.3, "ASSET_C": 0.2}
+  engine = MonteCarloEngine(
+    initial_value=100000.0,
+    asset_weights=weights,
+    returns_df=sample_returns_df,
+    seed=42,
+  )
+
+  res = engine.simulate_portfolio_gbm(
+    num_simulations=10,
+    time_horizon_years=3,
+    steps_per_year=252,
+    distribution="t_student",
+    degrees_of_freedom=5.0,
+  )
+
+  assert res.num_simulations == 10
+  assert res.trajectories.shape == (10, 3 * 252 + 1)
+  assert np.all(res.final_values > 0)
+  assert "cvar_95_final_value" in res.summary_metrics
+  assert res.summary_metrics["cvar_95_final_value"] <= res.percentiles["p5"] + 1e-5
+
+
+def test_monte_carlo_regime_switching_simulation(sample_returns_df):
+  weights = {"ASSET_A": 0.5, "ASSET_B": 0.3, "ASSET_C": 0.2}
+  engine = MonteCarloEngine(
+    initial_value=100000.0,
+    asset_weights=weights,
+    returns_df=sample_returns_df,
+    seed=42,
+  )
+
+  res = engine.simulate_portfolio_gbm(
+    num_simulations=10,
+    time_horizon_years=3,
+    steps_per_year=252,
+    distribution="regime_switching",
+    regime_p_calm_to_calm=0.90,
+    regime_p_crisis_to_crisis=0.70,
+  )
+
+  assert res.num_simulations == 10
+  assert res.trajectories.shape == (10, 3 * 252 + 1)
+  assert np.all(res.final_values > 0)
+  assert "year_1" in res.horizon_loss_probabilities
