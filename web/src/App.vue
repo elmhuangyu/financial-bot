@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useRuns } from "./composables/useRuns";
 import HeaderNav from "./components/HeaderNav.vue";
 import ArchivedDrawer from "./components/ArchivedDrawer.vue";
@@ -14,6 +14,31 @@ import { Layers, Activity, Table2, FileText, Database } from "lucide-vue-next";
 const { currentRunId, runSummary, runFiles, isLoading, fetchRuns, loadRunData } = useRuns();
 
 const activeTab = ref<"allocation" | "attribution" | "holdings" | "markdown" | "raw">("allocation");
+
+const hasAttribution = computed(() => {
+  return (
+    runSummary.value?.has_brinson || runSummary.value?.has_risk || runSummary.value?.has_symbols
+  );
+});
+
+const hasHoldings = computed(() => {
+  return runSummary.value?.has_holdings;
+});
+
+const hasMarkdown = computed(() => {
+  return runFiles.value.some((f) => f.type === "markdown" || f.name.endsWith(".md"));
+});
+
+const hasCsv = computed(() => {
+  return runFiles.value.some((f) => f.type === "csv" || f.name.endsWith(".csv"));
+});
+
+// Auto-switch away from attribution tab if current run doesn't have attribution data
+watch(hasAttribution, (hasAttr) => {
+  if (!hasAttr && activeTab.value === "attribution") {
+    activeTab.value = hasHoldings.value ? "allocation" : hasMarkdown.value ? "markdown" : "raw";
+  }
+});
 
 onMounted(async () => {
   await fetchRuns();
@@ -30,14 +55,15 @@ onMounted(async () => {
       <HeaderNav />
 
       <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <!-- Top KPI Stats Grid -->
+        <!-- Top KPI Stats Grid (Dynamic) -->
         <KpiStats :summary="runSummary" />
 
-        <!-- Navigation Tabs (DaisyUI Tabs) -->
+        <!-- Navigation Tabs (DaisyUI Tabs - Dynamic based on available files) -->
         <div
           class="tabs tabs-boxed bg-base-200 p-1.5 rounded-2xl border border-base-300 flex flex-wrap gap-1"
         >
           <a
+            v-if="hasHoldings"
             @click="activeTab = 'allocation'"
             class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
             :class="
@@ -49,7 +75,9 @@ onMounted(async () => {
             <Layers class="w-4 h-4" />
             Asset Allocation & Look-Through
           </a>
+
           <a
+            v-if="hasAttribution"
             @click="activeTab = 'attribution'"
             class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
             :class="
@@ -61,7 +89,9 @@ onMounted(async () => {
             <Activity class="w-4 h-4" />
             Attribution & Factor Risk
           </a>
+
           <a
+            v-if="hasHoldings"
             @click="activeTab = 'holdings'"
             class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
             :class="
@@ -73,7 +103,9 @@ onMounted(async () => {
             <Table2 class="w-4 h-4" />
             Holdings Explorer
           </a>
+
           <a
+            v-if="hasMarkdown"
             @click="activeTab = 'markdown'"
             class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
             :class="
@@ -85,7 +117,9 @@ onMounted(async () => {
             <FileText class="w-4 h-4" />
             Markdown Reports
           </a>
+
           <a
+            v-if="hasCsv"
             @click="activeTab = 'raw'"
             class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
             :class="
@@ -104,15 +138,22 @@ onMounted(async () => {
           <span class="loading loading-spinner text-primary loading-lg"></span>
         </div>
         <div v-else>
-          <AllocationTab v-if="activeTab === 'allocation'" :summary="runSummary" />
-          <AttributionTab v-if="activeTab === 'attribution'" :summary="runSummary" />
-          <HoldingsExplorer v-if="activeTab === 'holdings'" :summary="runSummary" />
+          <AllocationTab v-if="activeTab === 'allocation' && hasHoldings" :summary="runSummary" />
+          <AttributionTab
+            v-if="activeTab === 'attribution' && hasAttribution"
+            :summary="runSummary"
+          />
+          <HoldingsExplorer v-if="activeTab === 'holdings' && hasHoldings" :summary="runSummary" />
           <MarkdownViewer
-            v-if="activeTab === 'markdown'"
+            v-if="activeTab === 'markdown' && hasMarkdown"
             :run-id="currentRunId"
             :files="runFiles"
           />
-          <RawCsvInspector v-if="activeTab === 'raw'" :run-id="currentRunId" :files="runFiles" />
+          <RawCsvInspector
+            v-if="activeTab === 'raw' && hasCsv"
+            :run-id="currentRunId"
+            :files="runFiles"
+          />
         </div>
       </main>
 

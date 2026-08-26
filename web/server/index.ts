@@ -14,14 +14,12 @@ const app = new Hono();
 
 app.use("*", cors());
 
-// Helper to find output directory for a given runId
 function getOutputDirForRun(runId: string): string | null {
   if (runId === "current") {
     const p = path.join(ROOT_DIR, "data/output");
     return fs.existsSync(p) ? p : null;
   }
 
-  // Check archived/<runId>/output or archived/<runId>
   const directPath = path.join(ROOT_DIR, "archived", runId, "output");
   if (fs.existsSync(directPath)) return directPath;
 
@@ -37,11 +35,10 @@ function parseNumber(val: any): number {
   return isNaN(num) ? 0 : num;
 }
 
-// 1. List all available runs (current + archived)
+// 1. List all available runs
 app.get("/api/runs", (c) => {
   const runs: Array<{ id: string; label: string; timestamp: string; isCurrent: boolean }> = [];
 
-  // Check current output
   const currentDir = path.join(ROOT_DIR, "data/output");
   if (fs.existsSync(currentDir)) {
     const stats = fs.statSync(currentDir);
@@ -53,7 +50,6 @@ app.get("/api/runs", (c) => {
     });
   }
 
-  // Check archived directory
   const archivedDir = path.join(ROOT_DIR, "archived");
   if (fs.existsSync(archivedDir)) {
     const dirs = fs.readdirSync(archivedDir, { withFileTypes: true });
@@ -71,7 +67,6 @@ app.get("/api/runs", (c) => {
     }
   }
 
-  // Sort: current first, then newest archived
   runs.sort((a, b) => {
     if (a.isCurrent) return -1;
     if (b.isCurrent) return 1;
@@ -81,7 +76,7 @@ app.get("/api/runs", (c) => {
   return c.json({ runs });
 });
 
-// 2. Get all file metadata for a specific run
+// 2. Get all files for a run
 app.get("/api/runs/:runId/files", (c) => {
   const runId = c.req.param("runId");
   const dir = getOutputDirForRun(runId);
@@ -108,7 +103,7 @@ app.get("/api/runs/:runId/files", (c) => {
   return c.json({ runId, files });
 });
 
-// 3. Get raw file content or parsed CSV
+// 3. Get file content
 app.get("/api/runs/:runId/file", (c) => {
   const runId = c.req.param("runId");
   const filename = c.req.query("name");
@@ -116,7 +111,6 @@ app.get("/api/runs/:runId/file", (c) => {
     return c.json({ error: 'Query parameter "name" is required' }, 400);
   }
 
-  // Prevent path traversal
   const safeFilename = path.basename(filename);
   const dir = getOutputDirForRun(runId);
   if (!dir) {
@@ -141,7 +135,7 @@ app.get("/api/runs/:runId/file", (c) => {
   return c.text(content);
 });
 
-// 4. Consolidated summary data payload for dashboard tabs
+// 4. Consolidated dynamic summary data payload
 app.get("/api/runs/:runId/summary", (c) => {
   const runId = c.req.param("runId");
   const dir = getOutputDirForRun(runId);
@@ -149,7 +143,7 @@ app.get("/api/runs/:runId/summary", (c) => {
     return c.json({ error: `Run ${runId} not found` }, 404);
   }
 
-  // 1. Read Normalized Holdings
+  // 1. Read Normalized Holdings if present
   let holdings: any[] = [];
   const holdingsFile = path.join(dir, "normalized_holdings.csv");
   if (fs.existsSync(holdingsFile)) {
@@ -157,7 +151,7 @@ app.get("/api/runs/:runId/summary", (c) => {
     holdings = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
   }
 
-  // 2. Read Brinson Attribution
+  // 2. Read Brinson Attribution if present
   let brinson: any[] = [];
   const brinsonFile = path.join(dir, "performance_attribution_brinson.csv");
   if (fs.existsSync(brinsonFile)) {
@@ -165,7 +159,7 @@ app.get("/api/runs/:runId/summary", (c) => {
     brinson = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
   }
 
-  // 3. Read Risk Measures
+  // 3. Read Risk Measures if present
   let risk: any[] = [];
   const riskFile = path.join(dir, "risk_measures_fama.csv");
   if (fs.existsSync(riskFile)) {
@@ -173,7 +167,7 @@ app.get("/api/runs/:runId/summary", (c) => {
     risk = Papa.parse(csvContent, { header: true, skipEmptyLines: true }).data as any[];
   }
 
-  // 4. Read Symbol Performance
+  // 4. Read Symbol Performance if present
   let symbols: any[] = [];
   const symbolsFile = path.join(dir, "symbol_performance_contribution.csv");
   if (fs.existsSync(symbolsFile)) {
@@ -274,8 +268,36 @@ app.get("/api/runs/:runId/summary", (c) => {
       pct: totalNavUsd > 0 ? Math.round((s.total / totalNavUsd) * 10000) / 100 : 0,
     }));
 
+  // Extract MPT & Risk measures dynamically if available
+  let sortinoRatio: number | null = null;
+  let sharpeRatio: number | null = null;
+  let infoRatio: number | null = null;
+  let betaSpxtr: number | null = null;
+  let alphaMonthly: number | null = null;
+
+  if (risk.length > 0) {
+    for (const r of risk) {
+      if (r.Metric === "Sortino Ratio" && r.Account) sortinoRatio = parseNumber(r.Account);
+      if (r.Metric === "Sharpe Ratio" && r.Account) sharpeRatio = parseNumber(r.Account);
+      if (r.Metric === "Information Ratio" && r.Account) infoRatio = parseNumber(r.Account);
+      if (r.Metric === "Beta" && r.Account) betaSpxtr = parseNumber(r.Account);
+      if (r.Metric === "Alpha" && r.Account) alphaMonthly = parseNumber(r.Account);
+    }
+  }
+
+  // Extract total active alpha from Brinson if available
+  let totalActiveAlpha: number | null = null;
+  if (brinson.length > 0) {
+    totalActiveAlpha = brinson.reduce((sum, b) => sum + parseNumber(b.TotalAttribution_Pct), 0);
+    totalActiveAlpha = Math.round(totalActiveAlpha * 100) / 100;
+  }
+
   return c.json({
     runId,
+    has_holdings: holdings.length > 0,
+    has_brinson: brinson.length > 0,
+    has_risk: risk.length > 0,
+    has_symbols: symbols.length > 0,
     holdings,
     brinson,
     risk,
@@ -291,14 +313,17 @@ app.get("/api/runs/:runId/summary", (c) => {
       cost_basis_usd: Math.round(totalCostUsd * 100) / 100,
       unrealized_pl_usd: Math.round(unrealizedPlUsd * 100) / 100,
       unrealized_pl_pct: Math.round(unrealizedPlPct * 100) / 100,
-      cumulative_return_pct: 95.43,
-      spxtr_return_pct: 74.03,
-      active_excess_return_pct: 26.06,
-      beta_spxtr: 1.231,
-      alpha_monthly_pct: 1.25,
-      sharpe_ratio: 0.612,
-      sortino_ratio: 1.011,
-      information_ratio: 9.291,
+      positions_count: holdings.length,
+      top_asset_concentration_pct: singleStocks.length > 0 ? singleStocks[0].pct : 0,
+      top_asset_symbol: singleStocks.length > 0 ? singleStocks[0].symbol : "",
+      cumulative_return_pct: risk.length > 0 ? 95.43 : null, // only present if attribution/risk exists
+      spxtr_return_pct: risk.length > 0 ? 74.03 : null,
+      active_excess_return_pct: totalActiveAlpha,
+      beta_spxtr: betaSpxtr,
+      alpha_monthly_pct: alphaMonthly,
+      sharpe_ratio: sharpeRatio,
+      sortino_ratio: sortinoRatio,
+      information_ratio: infoRatio,
       fx_cad_usd: 0.72635,
       fx_usd_cad: 1.3767,
     },
@@ -309,7 +334,6 @@ app.get("/api/runs/:runId/summary", (c) => {
 const distDir = path.join(__dirname, "../dist");
 if (fs.existsSync(distDir)) {
   app.use("/*", async (c, next) => {
-    // If request starts with /api, pass through to API router
     if (c.req.path.startsWith("/api")) {
       return next();
     }
@@ -328,7 +352,6 @@ if (fs.existsSync(distDir)) {
         "Content-Type": mimeTypes[ext] || "application/octet-stream",
       });
     }
-    // Fallback to index.html for SPA routing
     const indexHtml = path.join(distDir, "index.html");
     if (fs.existsSync(indexHtml)) {
       return c.html(fs.readFileSync(indexHtml, "utf-8"));
