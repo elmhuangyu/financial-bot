@@ -180,7 +180,7 @@ When the user requests an HTML report or interactive dashboard, generate a publi
    - **Zero-Build CDN Libraries**: Tailwind CSS (styling), Chart.js v4 (visualizations), and Lucide Icons.
    - **Zero Backend / Self-Contained**: Embed all extracted metrics, breakdowns, and holding tables as client-side JSON (`APP_DATA`) to ensure the file opens and functions seamlessly offline in any browser.
 2. **Standard Functional Modules**:
-   - **Top KPI Cards with Dual-Currency Switcher**: Prominently display Net Worth, Cumulative Returns, and Risk Ratios (Sortino/Sharpe/Beta) with a real-time toggle between USD ($) and CAD (C$).
+   - **Top KPI Cards with Dual-Currency Switcher & Privacy Mode**: Prominently display Net Worth, Cumulative Returns, and Risk Ratios with a real-time toggle between USD ($) and CAD (C$), alongside a **Privacy Mode Toggle** to mask monetary amounts and quantities (e.g., '••••••' / '***') for screenshot privacy.
    - **Multi-Tab Navigation**: Organize dense data cleanly across dedicated tabs (e.g., Asset Allocation & Look-Through, Attribution & Factor Risk, Holdings Explorer).
    - **Interactive Visualizations**: Render responsive donut charts (macro asset classes, tax regimes, ownership), horizontal stacked bars (ETF look-through vs. direct sector exposure), and attribution waterfall/effect bars.
    - **Interactive Holdings Explorer**: Provide instant real-time keyword search, multi-field dropdown filters (Owner, Tax Treatment, Asset Class), column sorting (ascending/descending on click), and a dynamic total value/P&L footer.
