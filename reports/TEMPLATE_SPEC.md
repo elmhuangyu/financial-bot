@@ -75,7 +75,7 @@ Defines the publication-grade deliverables generated in `data/output/`.
 **Statement Date / Period**: <Date_or_Period>  
 **Generated At**: <Timestamp_UTC>  
 **FX Rate Assumed**: 1 CAD = <CAD_TO_USD_Rate> USD (1 USD = <USD_TO_CAD_Rate> CAD)  
-**Deliverable Artifacts**: [`<output_data>.csv`](../../data/output/<output_data>.csv)
+**Deliverable Artifacts**: [`<output_data>.csv`](<output_data>.csv)  
 
 ---
 

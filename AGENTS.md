@@ -147,8 +147,13 @@ graph TD
 
 ---
 
-## 7. Financial Report Format Standard
+## 7. Financial Report Format & Delivery Standards
 
+### 7.1 Report Language & Path Rules
+- **Default Language (English)**: If the user does not specify a language, all generated Markdown reports and deliverables under `data/output/` **MUST be written in English by default**.
+- **Zero Absolute Paths Rule**: NEVER include absolute filesystem paths or URI schemes (such as system root paths or file scheme URLs) in any generated Markdown reports, specifications (`reports/`), or code deliverables. Always use clean relative paths or filename links (e.g., `[normalized_holdings.csv](normalized_holdings.csv)`).
+
+### 7.2 Standard Report Structure
 When producing reports in `data/output/` and presenting to the user, ensure the following structure is respected (unless a specialized template in `reports/` specifies otherwise):
 
 1. **Executive Summary**: High-level overview of findings, total net worth, savings rate, or retirement readiness.
