@@ -17,10 +17,12 @@ const copied = ref<boolean>(false);
 const markdownContainer = ref<HTMLElement | null>(null);
 
 const markdownFiles = ref<any[]>([]);
+let currentFetchId = 0;
 
 // Initialize Mermaid with Dark Financial Slate Theme
 mermaid.initialize({
   startOnLoad: false,
+  securityLevel: "loose",
   theme: "dark",
   themeVariables: {
     darkMode: true,
@@ -35,11 +37,15 @@ mermaid.initialize({
   },
 });
 
-// Configure custom renderer for Marked to handle Mermaid code blocks
+// Configure custom renderer for Marked to reliably isolate Mermaid blocks
 const renderer = new marked.Renderer();
-renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
-  if (lang === "mermaid") {
-    return `<div class="mermaid-block my-8 p-5 rounded-2xl bg-base-300/70 border border-base-300 flex justify-center overflow-x-auto shadow-inner"><pre class="mermaid text-xs font-mono">${text}</pre></div>`;
+renderer.code = function (token: any, langParam?: string) {
+  const text = typeof token === "string" ? token : token?.text || "";
+  const lang = typeof token === "object" && token?.lang ? token.lang : langParam || "";
+
+  if (lang.trim().toLowerCase() === "mermaid") {
+    const safeCode = encodeURIComponent(text.trim());
+    return `<div class="mermaid-container not-prose my-8 p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto" data-mermaid-code="${safeCode}"></div>`;
   }
   return `<pre class="bg-base-300 p-4 rounded-xl overflow-x-auto text-xs font-mono text-slate-200 my-4"><code>${text}</code></pre>`;
 };
@@ -49,52 +55,75 @@ marked.use({ renderer });
 watch(
   () => props.files,
   (newFiles) => {
-    markdownFiles.value = newFiles.filter((f) => f.type === "markdown" || f.name.endsWith(".md"));
-    if (
-      markdownFiles.value.length > 0 &&
-      (!selectedFile.value || !markdownFiles.value.some((f) => f.name === selectedFile.value))
-    ) {
-      selectedFile.value = markdownFiles.value[0].name;
+    const validFiles = (newFiles || []).filter(
+      (f) => f.type === "markdown" || f.name.endsWith(".md"),
+    );
+    markdownFiles.value = validFiles;
+    if (validFiles.length > 0) {
+      if (!selectedFile.value || !validFiles.some((f) => f.name === selectedFile.value)) {
+        selectedFile.value = validFiles[0].name;
+      }
+    } else {
+      selectedFile.value = "";
+      rawContent.value = "";
+      renderedHtml.value = "";
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [props.runId, selectedFile.value],
+  ([newRunId, newFile]) => {
+    if (newRunId && newFile) {
       loadMarkdownContent();
     }
   },
   { immediate: true },
 );
 
-watch(selectedFile, () => {
-  loadMarkdownContent();
-});
+async function renderMermaidDiagrams() {
+  await nextTick();
+  if (!markdownContainer.value) return;
+
+  const containers = markdownContainer.value.querySelectorAll<HTMLElement>(".mermaid-container");
+  for (let i = 0; i < containers.length; i++) {
+    const el = containers[i];
+    const code = decodeURIComponent(el.getAttribute("data-mermaid-code") || "");
+    if (code) {
+      try {
+        const svgId = `mermaid-svg-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`;
+        const { svg } = await mermaid.render(svgId, code);
+        el.innerHTML = svg;
+      } catch (mErr) {
+        console.warn("Mermaid render error:", mErr);
+        el.innerHTML = `<pre class="text-xs font-mono text-slate-300 bg-base-300 p-4 rounded-xl overflow-x-auto">${code}</pre>`;
+      }
+    }
+  }
+}
 
 async function loadMarkdownContent() {
-  if (!selectedFile.value) return;
+  if (!selectedFile.value || !props.runId) return;
+  const fetchId = ++currentFetchId;
   isLoading.value = true;
   try {
     const res = await fetch(
       `/api/runs/${props.runId}/file?name=${encodeURIComponent(selectedFile.value)}`,
     );
+    if (fetchId !== currentFetchId) return;
     if (res.ok) {
       rawContent.value = await res.text();
       renderedHtml.value = marked.parse(rawContent.value) as string;
-
-      // Render Mermaid diagrams after DOM updates
-      await nextTick();
-      if (markdownContainer.value) {
-        const mermaidElements = markdownContainer.value.querySelectorAll(".mermaid");
-        if (mermaidElements.length > 0) {
-          try {
-            await mermaid.run({
-              nodes: mermaidElements as any,
-            });
-          } catch (mErr) {
-            console.warn("Mermaid render warning:", mErr);
-          }
-        }
-      }
+      isLoading.value = false;
+      await renderMermaidDiagrams();
     }
   } catch (e) {
     console.error(e);
   } finally {
-    isLoading.value = false;
+    if (fetchId === currentFetchId) {
+      isLoading.value = false;
+    }
   }
 }
 

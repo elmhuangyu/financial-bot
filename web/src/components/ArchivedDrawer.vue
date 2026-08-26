@@ -22,9 +22,7 @@ function formatDate(isoString: string): string {
 </script>
 
 <template>
-  <aside
-    class="w-64 bg-base-200 border-r border-base-300 min-h-screen flex flex-col p-4 text-slate-200 shrink-0"
-  >
+  <aside class="w-64 bg-base-200 h-full flex flex-col p-4 text-slate-200 shrink-0 select-none">
     <div class="flex items-center justify-between px-2 pb-4 border-b border-base-300">
       <div class="flex items-center gap-2">
         <FolderKanban class="w-5 h-5 text-primary" />

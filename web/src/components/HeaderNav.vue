@@ -27,7 +27,7 @@ function changeTheme(theme: string) {
 
 <template>
   <header
-    class="sticky top-0 z-40 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
+    class="shrink-0 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
   >
     <div class="w-full flex flex-wrap items-center justify-between gap-3">
       <!-- Left: Sidebar Toggle & Brand -->
