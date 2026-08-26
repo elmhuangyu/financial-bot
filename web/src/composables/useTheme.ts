@@ -7,14 +7,15 @@ export interface ThemeOption {
 }
 
 export const THEMES: ThemeOption[] = [
-  { id: "darkFinancial", label: "Financial Dark", isDark: true },
-  { id: "light", label: "Clean Light", isDark: false },
-  { id: "nord", label: "Nord Frost", isDark: false },
-  { id: "corporate", label: "Corporate Light", isDark: false },
-  { id: "emerald", label: "Emerald Light", isDark: false },
+  { id: "business", label: "Business Dark", isDark: true },
+  { id: "forest", label: "Forest Dark", isDark: true },
   { id: "night", label: "Deep Night", isDark: true },
   { id: "dim", label: "Dim Dark", isDark: true },
   { id: "dark", label: "Standard Dark", isDark: true },
+  { id: "emerald", label: "Emerald Light", isDark: false },
+  { id: "nord", label: "Nord Frost", isDark: false },
+  { id: "corporate", label: "Corporate Light", isDark: false },
+  { id: "light", label: "Clean Light", isDark: false },
 ];
 
 function getInitialTheme(): string {
@@ -24,7 +25,7 @@ function getInitialTheme(): string {
       return saved;
     }
   }
-  return "darkFinancial";
+  return "business";
 }
 
 const currentTheme = ref<string>(getInitialTheme());
@@ -58,7 +59,7 @@ export function useTheme() {
   function toggleTheme() {
     const currentOpt = THEMES.find((t) => t.id === currentTheme.value);
     const isDark = currentOpt ? currentOpt.isDark : true;
-    setTheme(isDark ? "light" : "darkFinancial");
+    setTheme(isDark ? "light" : "business");
   }
 
   return {

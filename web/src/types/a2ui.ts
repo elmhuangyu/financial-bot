@@ -26,7 +26,7 @@ export interface A2UIBaseWidget {
 
 export interface A2UIChartWidget extends A2UIBaseWidget {
   type: "chart";
-  chartType: "donut" | "bar" | "horizontal-bar" | "line";
+  chartType: "donut" | "doughnut" | "pie" | "bar" | "horizontal-bar" | "line";
   labels: string[];
   datasets: Array<{
     label?: string;

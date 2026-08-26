@@ -139,7 +139,7 @@ The manifest is a JSON file conforming to the following declarative schema:
 ```
 
 ### Supported Widget Types:
-- **`chart`**: `chartType: 'donut' | 'bar' | 'horizontal-bar' | 'line'` with `labels` and `datasets`.
+- **`chart`**: `chartType: 'donut' | 'doughnut' | 'pie' | 'bar' | 'horizontal-bar' | 'line'` with `labels` and `datasets`.
 - **`holdings-table`**: Dedicated portfolio holdings explorer supporting cross-account position consolidation (`aggregateBy: 'symbol'`), multi-line account list, and tax status badges.
 - **`data-table`**: General-purpose tabular widget for generic data (financial attribution, risk metrics, budget, cashflow, transactions) with `columns`, `sort`, `search`, `filters`, and `exportCsv`.
 - **`markdown`**: `sourceMd` (or inline `content`) with native Mermaid diagram rendering & copy button.

@@ -31,7 +31,7 @@ const currentRunBadge = computed(() => {
 
 <template>
   <header
-    class="shrink-0 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
+    class="relative z-30 shrink-0 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
   >
     <div class="w-full flex flex-wrap items-center justify-between gap-3">
       <!-- Left: Sidebar Toggle & Brand -->
@@ -152,7 +152,7 @@ const currentRunBadge = computed(() => {
               <input
                 type="radio"
                 name="theme-dropdown"
-                class="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start text-xs font-normal"
+                class="theme-controller btn btn-sm btn-block btn-ghost justify-start text-xs font-normal"
                 :aria-label="t.label"
                 :value="t.id"
                 :checked="currentTheme === t.id"
