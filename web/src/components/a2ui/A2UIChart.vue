@@ -122,7 +122,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="relative w-full h-64 sm:h-72 flex-1">
-      <canvas ref="{canvasRef}"></canvas>
+      <canvas ref="canvasRef"></canvas>
     </div>
   </div>
 </template>
