@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, nextTick } from "vue";
 import { marked } from "marked";
+import mermaid from "mermaid";
 import { FileText, Copy, Check } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -9,11 +10,41 @@ const props = defineProps<{
 }>();
 
 const selectedFile = ref<string>("");
-const content = ref<string>("");
+const rawContent = ref<string>("");
+const renderedHtml = ref<string>("");
 const isLoading = ref<boolean>(false);
 const copied = ref<boolean>(false);
+const markdownContainer = ref<HTMLElement | null>(null);
 
 const markdownFiles = ref<any[]>([]);
+
+// Initialize Mermaid with Dark Financial Slate Theme
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "dark",
+  themeVariables: {
+    darkMode: true,
+    background: "#0f172a",
+    primaryColor: "#22c55e",
+    primaryTextColor: "#f8fafc",
+    primaryBorderColor: "#334155",
+    lineColor: "#38bdf8",
+    secondaryColor: "#0ea5e9",
+    tertiaryColor: "#1e293b",
+    fontFamily: "Inter, system-ui, sans-serif",
+  },
+});
+
+// Configure custom renderer for Marked to handle Mermaid code blocks
+const renderer = new marked.Renderer();
+renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
+  if (lang === "mermaid") {
+    return `<div class="mermaid-block my-8 p-5 rounded-2xl bg-base-300/70 border border-base-300 flex justify-center overflow-x-auto shadow-inner"><pre class="mermaid text-xs font-mono">${text}</pre></div>`;
+  }
+  return `<pre class="bg-base-300 p-4 rounded-xl overflow-x-auto text-xs font-mono text-slate-200 my-4"><code>${text}</code></pre>`;
+};
+
+marked.use({ renderer });
 
 watch(
   () => props.files,
@@ -42,7 +73,23 @@ async function loadMarkdownContent() {
       `/api/runs/${props.runId}/file?name=${encodeURIComponent(selectedFile.value)}`,
     );
     if (res.ok) {
-      content.value = await res.text();
+      rawContent.value = await res.text();
+      renderedHtml.value = marked.parse(rawContent.value) as string;
+
+      // Render Mermaid diagrams after DOM updates
+      await nextTick();
+      if (markdownContainer.value) {
+        const mermaidElements = markdownContainer.value.querySelectorAll(".mermaid");
+        if (mermaidElements.length > 0) {
+          try {
+            await mermaid.run({
+              nodes: mermaidElements as any,
+            });
+          } catch (mErr) {
+            console.warn("Mermaid render warning:", mErr);
+          }
+        }
+      }
     }
   } catch (e) {
     console.error(e);
@@ -52,15 +99,11 @@ async function loadMarkdownContent() {
 }
 
 function copyContent() {
-  navigator.clipboard.writeText(content.value);
+  navigator.clipboard.writeText(rawContent.value);
   copied.value = true;
   setTimeout(() => {
     copied.value = false;
   }, 2000);
-}
-
-function renderMarkdown(raw: string): string {
-  return marked.parse(raw) as string;
 }
 </script>
 
@@ -74,7 +117,7 @@ function renderMarkdown(raw: string): string {
         <FileText class="w-5 h-5 text-primary" />
         <select
           v-model="selectedFile"
-          class="select select-sm select-bordered bg-base-300 text-xs font-semibold rounded-lg w-full sm:w-72"
+          class="select select-sm select-bordered bg-base-300 text-xs font-semibold rounded-lg w-full sm:w-80"
         >
           <option v-for="f in markdownFiles" :key="f.name" :value="f.name">{{ f.name }}</option>
         </select>
@@ -89,15 +132,16 @@ function renderMarkdown(raw: string): string {
       </button>
     </div>
 
-    <!-- Rendered Markdown Container -->
-    <div class="card bg-base-200 border border-base-300 p-6 shadow-sm min-h-[400px]">
+    <!-- Rendered Markdown Container with Mermaid support & Generous Spacing -->
+    <div class="card bg-base-200 border border-base-300 p-6 sm:p-8 shadow-sm min-h-[400px]">
       <div v-if="isLoading" class="flex justify-center items-center py-20">
         <span class="loading loading-spinner text-primary loading-lg"></span>
       </div>
       <div
         v-else
-        class="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-table:border-base-300 prose-th:bg-base-300/60 prose-th:p-2 prose-td:p-2 prose-th:text-xs prose-td:text-xs prose-td:font-mono text-sm leading-relaxed"
-        v-html="renderMarkdown(content)"
+        ref="markdownContainer"
+        class="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-table:border-base-300 prose-th:bg-base-300/60 prose-th:p-2.5 prose-td:p-2.5 prose-th:text-xs prose-td:text-xs prose-td:font-mono text-sm leading-relaxed"
+        v-html="renderedHtml"
       ></div>
     </div>
   </div>

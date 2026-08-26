@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useRuns } from "./composables/useRuns";
+import { useSidebar } from "./composables/useSidebar";
 import HeaderNav from "./components/HeaderNav.vue";
 import ArchivedDrawer from "./components/ArchivedDrawer.vue";
 import KpiStats from "./components/KpiStats.vue";
@@ -12,6 +13,7 @@ import RawCsvInspector from "./components/RawCsvInspector.vue";
 import { Layers, Activity, Table2, FileText, Database } from "lucide-vue-next";
 
 const { currentRunId, runSummary, runFiles, isLoading, fetchRuns, loadRunData } = useRuns();
+const { isSidebarCollapsed } = useSidebar();
 
 const activeTab = ref<"allocation" | "attribution" | "holdings" | "markdown" | "raw">("allocation");
 
@@ -33,7 +35,6 @@ const hasCsv = computed(() => {
   return runFiles.value.some((f) => f.type === "csv" || f.name.endsWith(".csv"));
 });
 
-// Auto-switch away from attribution tab if current run doesn't have attribution data
 watch(hasAttribution, (hasAttr) => {
   if (!hasAttr && activeTab.value === "attribution") {
     activeTab.value = hasHoldings.value ? "allocation" : hasMarkdown.value ? "markdown" : "raw";
@@ -47,18 +48,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="drawer lg:drawer-open min-h-screen bg-base-100 font-sans">
-    <input id="drawer-runs" type="checkbox" class="drawer-toggle" />
+  <div class="min-h-screen bg-base-100 font-sans flex flex-row w-full overflow-x-hidden">
+    <!-- Collapsible Sidebar (Drawer) -->
+    <div
+      class="transition-all duration-300 ease-in-out overflow-hidden z-30 shrink-0 border-r border-base-300"
+      :class="isSidebarCollapsed ? 'w-0 border-none' : 'w-64'"
+    >
+      <ArchivedDrawer />
+    </div>
 
-    <!-- Drawer Content (Main Page) -->
-    <div class="drawer-content flex flex-col min-h-screen">
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0">
       <HeaderNav />
 
       <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         <!-- Top KPI Stats Grid (Dynamic) -->
         <KpiStats :summary="runSummary" />
 
-        <!-- Navigation Tabs (DaisyUI Tabs - Dynamic based on available files) -->
+        <!-- Navigation Tabs -->
         <div
           class="tabs tabs-boxed bg-base-200 p-1.5 rounded-2xl border border-base-300 flex flex-wrap gap-1"
         >
@@ -166,12 +173,6 @@ onMounted(async () => {
           Deterministic Analysis
         </p>
       </footer>
-    </div>
-
-    <!-- Drawer Side (Left Sidebar) -->
-    <div class="drawer-side z-50">
-      <label for="drawer-runs" aria-label="close sidebar" class="drawer-overlay"></label>
-      <ArchivedDrawer />
     </div>
   </div>
 </template>

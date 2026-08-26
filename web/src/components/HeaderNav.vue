@@ -2,11 +2,21 @@
 import { useCurrency } from "../composables/useCurrency";
 import { usePrivacy } from "../composables/usePrivacy";
 import { useRuns } from "../composables/useRuns";
-import { TrendingUp, Eye, EyeOff, Menu, RefreshCw, Palette } from "lucide-vue-next";
+import { useSidebar } from "../composables/useSidebar";
+import {
+  TrendingUp,
+  Eye,
+  EyeOff,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+  Palette,
+} from "lucide-vue-next";
 
 const { currentCurrency, setCurrency } = useCurrency();
 const { isPrivacyMode, togglePrivacy } = usePrivacy();
 const { currentRunId, loadRunData, isLoading } = useRuns();
+const { isSidebarCollapsed, toggleSidebar } = useSidebar();
 
 const themes = ["darkFinancial", "night", "dim", "dark", "nord"];
 
@@ -19,16 +29,21 @@ function changeTheme(theme: string) {
   <header
     class="sticky top-0 z-40 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
   >
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      <!-- Left: Drawer Toggle & Brand -->
+    <div class="w-full flex flex-wrap items-center justify-between gap-3">
+      <!-- Left: Sidebar Toggle & Brand -->
       <div class="flex items-center gap-3">
-        <label
-          for="drawer-runs"
-          class="btn btn-ghost btn-sm btn-square lg:hidden"
-          aria-label="Toggle Runs Drawer"
+        <!-- Desktop & Mobile Sidebar Collapse Toggle Button -->
+        <button
+          @click="toggleSidebar"
+          class="btn btn-ghost btn-sm btn-square text-slate-400 hover:text-white"
+          :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
+          aria-label="Toggle Sidebar"
         >
-          <Menu class="w-5 h-5" />
-        </label>
+          <component
+            :is="isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose"
+            class="w-5 h-5 text-primary"
+          />
+        </button>
 
         <div
           class="p-2 bg-gradient-to-tr from-primary to-secondary rounded-xl shadow-md text-white"

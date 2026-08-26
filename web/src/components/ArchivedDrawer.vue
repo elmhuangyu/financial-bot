@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useRuns } from "../composables/useRuns";
-import { Clock, Archive, Sparkles, FolderKanban, CheckCircle2 } from "lucide-vue-next";
+import { useSidebar } from "../composables/useSidebar";
+import { Clock, Archive, Sparkles, FolderKanban, CheckCircle2, ChevronLeft } from "lucide-vue-next";
 
-const { runs, currentRunId, selectRun, isLoading } = useRuns();
+const { runs, currentRunId, selectRun } = useRuns();
+const { toggleSidebar } = useSidebar();
 
 function formatDate(isoString: string): string {
   try {
@@ -21,15 +23,24 @@ function formatDate(isoString: string): string {
 
 <template>
   <aside
-    class="w-64 bg-base-200 border-r border-base-300 min-h-screen flex flex-col p-4 text-slate-200"
+    class="w-64 bg-base-200 border-r border-base-300 min-h-screen flex flex-col p-4 text-slate-200 shrink-0"
   >
-    <div class="flex items-center gap-2 px-2 pb-4 border-b border-base-300">
-      <FolderKanban class="w-5 h-5 text-primary" />
-      <span class="font-bold text-sm text-white">Execution Runs</span>
+    <div class="flex items-center justify-between px-2 pb-4 border-b border-base-300">
+      <div class="flex items-center gap-2">
+        <FolderKanban class="w-5 h-5 text-primary" />
+        <span class="font-bold text-sm text-white">Execution Runs</span>
+      </div>
+      <button
+        @click="toggleSidebar"
+        class="btn btn-ghost btn-xs btn-square text-slate-400 hover:text-white"
+        title="Collapse Sidebar"
+      >
+        <ChevronLeft class="w-4 h-4" />
+      </button>
     </div>
 
     <!-- Runs List -->
-    <div class="mt-4 flex-1 space-y-4 overflow-y-auto">
+    <div class="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
       <!-- Current Session -->
       <div>
         <div

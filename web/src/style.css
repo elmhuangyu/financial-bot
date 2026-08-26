@@ -8,3 +8,37 @@ body {
   padding: 0;
   height: 100%;
 }
+
+/* Enhanced Markdown Prose Spacing */
+.prose hr {
+  margin-top: 2.75rem !important;
+  margin-bottom: 2.75rem !important;
+  border-top-width: 1px !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.prose h1 {
+  margin-top: 2.5rem !important;
+  margin-bottom: 1.25rem !important;
+}
+
+.prose h2 {
+  margin-top: 2.25rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.prose h3 {
+  margin-top: 1.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.prose p {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  line-height: 1.75 !important;
+}
+
+.prose table {
+  margin-top: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
