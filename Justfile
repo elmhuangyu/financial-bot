@@ -24,6 +24,19 @@ build:
 test:
     uv run python -m pytest
 
+# Run the fullstack web dashboard in dev mode (Hono API on :3000 + Vite UI on :5173)
+dev:
+    pnpm --prefix web dev
+
+# Build the Vue web dashboard
+build-web:
+    pnpm --prefix web build
+
+# Start the production web server (Hono API + SPA UI on :3000)
+serve:
+    pnpm --prefix web build
+    pnpm --prefix web start
+
 # Archive current data directory and recreate a clean data directory
 archive:
     #!/usr/bin/env bash

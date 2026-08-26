@@ -13,3 +13,8 @@ wheels/
 # work dir
 /data/
 /archived/
+
+# Node / Web
+node_modules/
+web/dist/
+.pnpm-debug.log*
