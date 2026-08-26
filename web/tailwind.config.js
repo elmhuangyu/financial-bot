@@ -13,17 +13,7 @@ export default {
   },
   plugins: [daisyui],
   daisyui: {
-    themes: [
-      "business",
-      "forest",
-      "night",
-      "dim",
-      "dark",
-      "emerald",
-      "nord",
-      "corporate",
-      "light",
-    ],
+    themes: ["business", "forest", "night", "dim", "dark", "emerald", "nord", "corporate", "light"],
     defaultTheme: "business",
   },
 };

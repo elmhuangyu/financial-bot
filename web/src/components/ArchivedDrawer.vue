@@ -60,7 +60,9 @@ function formatDate(isoString: string): string {
             >
               <div class="flex items-center gap-2 truncate">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                <span class="truncate text-xs">{{ run.name ? `Active (${run.name})` : run.label }}</span>
+                <span class="truncate text-xs">{{
+                  run.name ? `Active (${run.name})` : run.label
+                }}</span>
               </div>
               <CheckCircle2
                 v-if="currentRunId === run.id"
