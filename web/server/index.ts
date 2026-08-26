@@ -310,6 +310,11 @@ app.get("/api/runs/:runId/manifest", (c) => {
       ownerMap[owner] = (ownerMap[owner] || 0) + mval;
     });
 
+    const sortedAcEntries = Object.entries(acMap).sort((a, b) => a[0].localeCompare(b[0]));
+    const sortedSecEntries = Object.entries(secMap).sort((a, b) => a[0].localeCompare(b[0]));
+    const sortedTaxEntries = Object.entries(taxMap).sort((a, b) => a[0].localeCompare(b[0]));
+    const sortedOwnerEntries = Object.entries(ownerMap).sort((a, b) => a[0].localeCompare(b[0]));
+
     const allocationWidgets: A2UIWidget[] = [
       {
         id: "chart-asset-classes",
@@ -317,10 +322,10 @@ app.get("/api/runs/:runId/manifest", (c) => {
         chartType: "donut",
         title: "Macro Asset Class Allocation",
         description: "Broad portfolio distribution across asset classes",
-        labels: Object.keys(acMap),
+        labels: sortedAcEntries.map(([k]) => k),
         datasets: [
           {
-            data: Object.values(acMap).map((v) => Math.round(v * 100) / 100),
+            data: sortedAcEntries.map(([, v]) => Math.round(v * 100) / 100),
             backgroundColor: ["#22c55e", "#0ea5e9", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6"],
           },
         ],
@@ -331,11 +336,11 @@ app.get("/api/runs/:runId/manifest", (c) => {
         chartType: "horizontal-bar",
         title: "Sector Weightings",
         description: "Direct sector exposure across portfolio assets",
-        labels: Object.keys(secMap),
+        labels: sortedSecEntries.map(([k]) => k),
         datasets: [
           {
             label: "Market Value (USD)",
-            data: Object.values(secMap).map((v) => Math.round(v * 100) / 100),
+            data: sortedSecEntries.map(([, v]) => Math.round(v * 100) / 100),
             backgroundColor: "#0ea5e9",
           },
         ],
@@ -345,7 +350,7 @@ app.get("/api/runs/:runId/manifest", (c) => {
         type: "key-val-list",
         title: "Tax Structure Allocation",
         description: "Breakdown across tax-free, tax-deferred, and taxable accounts",
-        items: Object.entries(taxMap).map(([k, v]) => ({
+        items: sortedTaxEntries.map(([k, v]) => ({
           label: k,
           value: Math.round(v * 100) / 100,
           format: "currency",
@@ -359,7 +364,7 @@ app.get("/api/runs/:runId/manifest", (c) => {
         type: "key-val-list",
         title: "Ownership Distribution",
         description: "Distribution across primary and secondary account holders",
-        items: Object.entries(ownerMap).map(([k, v]) => ({
+        items: sortedOwnerEntries.map(([k, v]) => ({
           label: k,
           value: Math.round(v * 100) / 100,
           format: "currency",
@@ -570,6 +575,8 @@ app.get("/api/runs/:runId/manifest", (c) => {
       })),
     });
   }
+
+  tabs.sort((a, b) => (a.label || "").localeCompare(b.label || "", undefined, { sensitivity: "base" }));
 
   const manifest: A2UIManifest = {
     schemaVersion: "1.0",

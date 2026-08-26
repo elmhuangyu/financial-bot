@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import type { A2UIManifest, A2UITab } from "../../types/a2ui";
 import A2UIKpiGrid from "./A2UIKpiGrid.vue";
 import A2UIChart from "./A2UIChart.vue";
@@ -25,6 +25,13 @@ const props = defineProps<{
 
 const activeTabId = ref<string>("");
 
+const sortedTabs = computed<A2UITab[]>(() => {
+  if (!props.manifest?.tabs) return [];
+  return [...props.manifest.tabs].sort((a, b) =>
+    (a.label || "").localeCompare(b.label || "", undefined, { sensitivity: "base" }),
+  );
+});
+
 const iconMap: Record<string, any> = {
   layers: Layers,
   activity: Activity,
@@ -43,11 +50,11 @@ function getTabIcon(name?: string) {
 }
 
 watch(
-  () => props.manifest,
-  (newManifest) => {
-    if (newManifest?.tabs && newManifest.tabs.length > 0) {
-      if (!activeTabId.value || !newManifest.tabs.some((t) => t.id === activeTabId.value)) {
-        activeTabId.value = newManifest.tabs[0].id;
+  sortedTabs,
+  (newTabs) => {
+    if (newTabs && newTabs.length > 0) {
+      if (!activeTabId.value || !newTabs.some((t) => t.id === activeTabId.value)) {
+        activeTabId.value = newTabs[0].id;
       }
     }
   },
@@ -55,7 +62,7 @@ watch(
 );
 
 function getActiveTab(): A2UITab | undefined {
-  return props.manifest?.tabs?.find((t) => t.id === activeTabId.value) || props.manifest?.tabs?.[0];
+  return sortedTabs.value.find((t) => t.id === activeTabId.value) || sortedTabs.value[0];
 }
 </script>
 
@@ -66,11 +73,11 @@ function getActiveTab(): A2UITab | undefined {
 
     <!-- Dynamic Tabs Bar -->
     <div
-      v-if="manifest.tabs && manifest.tabs.length > 0"
+      v-if="sortedTabs && sortedTabs.length > 0"
       class="tabs tabs-boxed bg-base-200 p-1.5 rounded-2xl border border-base-300 flex flex-wrap gap-1"
     >
       <a
-        v-for="tab in manifest.tabs"
+        v-for="tab in sortedTabs"
         :key="tab.id"
         @click="activeTabId = tab.id"
         class="tab text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
