@@ -95,6 +95,15 @@ If the user requests a report type that does **not** yet have a definition under
    - Contains zero user output data or PII.
 5. Proceed with script creation in `data/tmp/` and report generation in `data/output/`.
 
+### 4.3 Input Triage & Feasibility Protocol (When User Intent is Open / Unspecified):
+When the user provides data (or places files in `data/input/`) but has not specified what analysis or report to run:
+1. **Scan Existing Specifications**: Iterate through all defined report specifications under `reports/*/SPEC.md`.
+2. **Evaluate Feasibility per Report**: For each report type, compare the available files/parameters in `data/input/` against the `## 2. Required Input` section of its `SPEC.md`.
+3. **Present Feasibility Matrix to User**: Provide the user with a clear summary:
+   - **Feasible Analyses (Ready to Run)**: Reports where all required inputs are present. Explain what insights each report will produce.
+   - **Incomplete Analyses (Missing Information)**: Reports that could be run if specific missing data or user parameters are provided (e.g., target retirement age, spending targets, unlisted asset details, real estate valuations).
+4. **Prompt for Selection**: Ask the user which analysis they would like to proceed with or invite them to supply the missing inputs.
+
 ---
 
 ## 5. Environment & Development Tooling

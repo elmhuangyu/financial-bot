@@ -43,7 +43,7 @@ Simulate three distinct real estate paradigms:
 ### 3.4 Multi-Scenario Comparative Framework
 The planning model evaluates and contrasts multiple strategic scenarios to provide decision clarity on trade-offs:
 - **Baseline Plan**: Primary target threshold and nominal living expenses with rental held.
-- **Fast FIRE Plan**: $2.8M USD target with $80k CAD spending (reaches retirement in 6 years, Bob age 43).
+- **Fast FIRE Plan**: Target size sensitivity with reduced consumption parameters (e.g., reaching early retirement on an accelerated timeline).
 - **Asset Allocation Comparisons**: Evaluating 100% equity vs. 90/10 equity/treasury blends.
 - **Real Estate Variations**: Immediate liquidation vs. emergency backstop liquidation.
 - **Plan Solidity Scorecard**: Rating each scenario's viability based on 95-year ruin rates ($<3\%$ A+, $<5\%$ A, $<8\%$ A-, $\ge 8\%$ B+).
