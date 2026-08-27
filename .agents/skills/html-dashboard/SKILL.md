@@ -13,8 +13,9 @@ This skill guides the AI Agent in producing `data/output/ui_manifest.json` on-de
 
 1. **On-Demand Only**: Only generate `ui_manifest.json` when the user explicitly asks for a dashboard, web view, or visual report.
 2. **Zero HTML/Web Code**: The frontend web app is fully decoupled and automatically renders whatever is defined in `ui_manifest.json`. The agent only produces the JSON manifest.
-3. **Dynamic & Data-Driven**: Adapt the KPIs, Tabs, Charts, and Tables dynamically to match the active deliverables in `data/output/`.
-4. **Zero Absolute Paths**: Use relative filenames for all data sources (e.g. `"normalized_holdings.csv"`).
+3. **USD Base Normalization Rule**: The frontend currency toggle dynamically converts amounts based on USD. Therefore, **ALL currency values in `ui_manifest.json` (KPI values, chart data) and source CSVs (`format: "currency"`) MUST be stored in USD Base**. NEVER hardcode CAD/EUR currency labels in column names or table headers (e.g. use `"Annual Spend"` instead of `"Annual Spend (CAD)"`, and normalize the underlying CSV values to USD by dividing by the FX rate).
+4. **Dynamic & Data-Driven**: Adapt the KPIs, Tabs, Charts, and Tables dynamically to match the active deliverables in `data/output/`.
+5. **Zero Absolute Paths**: Use relative filenames for all data sources (e.g. `"normalized_holdings.csv"`).
 
 ---
 
