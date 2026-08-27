@@ -5,15 +5,7 @@ import { usePrivacy } from "../composables/usePrivacy";
 import { useRuns } from "../composables/useRuns";
 import { useSidebar } from "../composables/useSidebar";
 import { useTheme } from "../composables/useTheme";
-import {
-  TrendingUp,
-  Eye,
-  EyeOff,
-  PanelLeftClose,
-  PanelLeftOpen,
-  RefreshCw,
-  Palette,
-} from "lucide-vue-next";
+import { TrendingUp, Eye, EyeOff, RefreshCw, Palette } from "lucide-vue-next";
 
 const { currentCurrency, setCurrency } = useCurrency();
 const { isPrivacyMode, togglePrivacy } = usePrivacy();
@@ -34,26 +26,22 @@ const currentRunBadge = computed(() => {
     class="relative z-30 shrink-0 bg-base-200/80 backdrop-blur-md border-b border-base-300 px-4 lg:px-6 py-3"
   >
     <div class="w-full flex flex-wrap items-center justify-between gap-3">
-      <!-- Left: Sidebar Toggle & Brand -->
+      <!-- Left: Brand (Clickable to Expand when collapsed) -->
       <div class="flex items-center gap-3">
-        <!-- Desktop & Mobile Sidebar Collapse Toggle Button -->
         <button
-          @click="toggleSidebar"
-          class="btn btn-ghost btn-sm btn-square text-base-content/60 hover:text-base-content"
-          :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
-          aria-label="Toggle Sidebar"
-        >
-          <component
-            :is="isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose"
-            class="w-5 h-5 text-primary"
-          />
-        </button>
-
-        <div
-          class="p-2 bg-gradient-to-tr from-primary to-secondary rounded-xl shadow-md text-white"
+          type="button"
+          @click="isSidebarCollapsed ? toggleSidebar() : null"
+          class="p-2 bg-gradient-to-tr from-primary to-secondary rounded-xl shadow-md text-white transition-all flex items-center justify-center"
+          :class="
+            isSidebarCollapsed
+              ? 'cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95'
+              : 'cursor-default'
+          "
+          :title="isSidebarCollapsed ? 'Click to expand sidebar' : undefined"
+          :aria-label="isSidebarCollapsed ? 'Expand Sidebar' : 'Financial Intelligence Brand Icon'"
         >
           <TrendingUp class="w-5 h-5" />
-        </div>
+        </button>
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-bold tracking-tight text-base-content">
@@ -91,7 +79,7 @@ const currentRunBadge = computed(() => {
           :class="
             isPrivacyMode
               ? 'btn-secondary shadow-sm shadow-secondary/20'
-              : 'btn-outline border-base-300 text-base-content/80 hover:text-base-content'
+              : 'btn-ghost bg-base-100/60 hover:bg-base-300 border border-base-300 text-base-content/80 hover:text-base-content'
           "
           title="Toggle Privacy Mode (Mask Balances)"
         >

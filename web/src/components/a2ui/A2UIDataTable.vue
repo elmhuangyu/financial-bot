@@ -146,6 +146,33 @@ const processedRows = computed(() => {
   });
 });
 
+function resolveBadgeColor(val: string, col: A2UIDataTableColumn): string {
+  if (col.badgeColorMap?.[val]) {
+    return col.badgeColorMap[val];
+  }
+  const clean = val.trim().toUpperCase();
+  // Financial Grades (A+, A, A-, B+, B, C, D, etc.)
+  if (clean === "A+" || clean === "AAA")
+    return "badge-success text-success-content font-bold shadow-sm";
+  if (clean === "A" || clean === "AA") return "badge-success bg-emerald-600 text-white font-bold";
+  if (clean === "A-" || clean === "BBB") return "badge-accent text-accent-content font-semibold";
+  if (clean.startsWith("B+") || clean === "B")
+    return "badge-warning text-warning-content font-semibold";
+  if (clean.startsWith("B-") || clean.startsWith("C"))
+    return "badge-error text-error-content font-semibold";
+  if (clean.startsWith("D") || clean.startsWith("F")) return "badge-error font-bold";
+
+  // Common Tax & Account Badges
+  if (clean.includes("TFSA") || clean.includes("TAX-FREE"))
+    return "badge-success badge-outline font-semibold";
+  if (clean.includes("RRSP") || clean.includes("TAX-DEFERRED") || clean.includes("401K"))
+    return "badge-info badge-outline font-semibold";
+  if (clean.includes("TAXABLE") || clean.includes("NON-REG"))
+    return "badge-warning badge-outline font-semibold";
+
+  return "badge-primary badge-outline font-medium";
+}
+
 function getBadgeList(row: any, col: any): string[] {
   const val = row[col.key];
   if (val === undefined || val === null || val === "") return [];
@@ -304,24 +331,32 @@ function exportCsv() {
             <td
               v-for="col in columns"
               :key="col.key"
-              :class="
+              :class="[
                 col.align === 'right'
                   ? 'text-right'
                   : col.align === 'center'
                     ? 'text-center'
-                    : 'text-left'
-              "
+                    : 'text-left',
+                col.align === 'center' ? 'text-center' : '',
+              ]"
             >
               <!-- Badge format -->
               <div
                 v-if="col.format === 'badge'"
-                class="flex flex-wrap gap-1 items-center max-w-[240px]"
+                class="flex flex-wrap gap-1 items-center"
+                :class="
+                  col.align === 'center'
+                    ? 'justify-center'
+                    : col.align === 'right'
+                      ? 'justify-end'
+                      : 'justify-start'
+                "
               >
                 <span
                   v-for="b in getBadgeList(row, col)"
                   :key="b"
-                  class="badge badge-xs font-semibold whitespace-nowrap"
-                  :class="col.badgeColorMap?.[b] || 'badge-neutral badge-outline'"
+                  class="badge badge-sm font-semibold whitespace-nowrap px-2 py-0.5"
+                  :class="resolveBadgeColor(b, col)"
                 >
                   {{ b }}
                 </span>
