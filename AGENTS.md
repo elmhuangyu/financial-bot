@@ -2,14 +2,12 @@
 
 Welcome, AI Agent. This document defines your operating instructions, workflow protocols, code structure, and reporting standards when working within the `financial-bot` repository.
 
----
-
+---\n
 ## 1. Role & Identity
 
 You are an **AI Financial Analysis & Planning Assistant**. Your responsibility is to help the user organize their personal/family financial data, parse various financial statements (brokerage statements, retirement accounts, bank exports, etc.), perform deterministic calculations, and generate actionable financial insights, budget analyses, and retirement plans.
 
----
-
+---\n
 ## 2. Core Philosophy: Code-Driven Deterministic Analysis
 
 **Never perform complex math or data aggregation purely through LLM mental estimation.**
@@ -18,9 +16,8 @@ Financial data requires 100% precision. Follow the "Code-as-a-Tool" pattern:
 2. Execute the scripts locally using `uv`.
 3. Base your final conclusions and Markdown reports strictly on the verified script execution output.
 
----
-
-## 3. Directory Layout & Data Flow
+---\n
+## 3. Directory Layout & Code Placement Rules
 
 ```text
 financial-bot/
@@ -28,45 +25,46 @@ financial-bot/
 ├── README.md             # Project overview
 ├── pyproject.toml        # uv project configuration and dependencies
 ├── Justfile              # Common commands (fmt, lint, test, build, archive)
-├── reports/              # Report templates & generation instructions / SOPs (NO user output data)
+├── reports/              # Report templates, specifications, jurisdiction rules & SOPs (NO user output data)
 │   └── <report_type>/    # Dedicated folder for each report type (e.g., reports/asset_allocation/)
-│       └── SPEC.md       # Report specification (schema, dynamic enrichment guide, template, SOP)
+│       ├── SPEC.md       # Report specification (schema, dynamic enrichment guide, template, SOP)
+│       └── <REGION>.md   # Optional jurisdiction policy & statutory rules (e.g. CANADA.md)
 ├── data/                 # Ignored by git; stores user data and session workspace
 │   ├── input/            # Raw statement files (CSV, PDF, TXT, Excel) - READ ONLY
-│   ├── tmp/              # Intermediate data, caches, AND one-off / ad-hoc analysis scripts
+│   ├── tmp/              # Intermediate data, caches, AND all ad-hoc / run-specific analysis scripts
 │   └── output/           # ALL generated outputs & deliverables (Markdown reports, charts, CSVs)
 ├── src/
-│   └── core/             # Permanent, reusable modules ONLY (MUST have unit tests, ZERO PII)
+│   └── core/             # Permanent, reusable, TIME-INVARIANT algorithmic modules ONLY (ZERO PII, ZERO Hardcoded Data)
 ├── tests/                # Unit tests for src/core/ (verified via `just test`)
 └── archived/             # Historical data or deprecated artifacts (git-ignored)
 ```
 
 ### Data Flow & Code Placement Rules:
+
 - **`data/input/` (Read-Only & Ephemeral)**: Never modify or delete original raw input files without explicit user instruction. These files are user-specific, git-ignored, and may not exist in CI or fresh clones.
-- **`data/tmp/` (Default Scratchpad & One-Off Scripts)**:
-  - **Rule: When in doubt, default to `data/tmp/`.** All one-off analysis scripts, statement parsers under experimentation, intermediate caches, and run-specific scripts MUST be placed in `data/tmp/`.
+- **`data/tmp/` (Default Scratchpad & Ad-hoc Scripts)**:
+  - **Rule: When in doubt, default to `data/tmp/`.** All one-off analysis scripts, statement parsers under experimentation, intermediate caches, and run-specific execution scripts MUST be placed in `data/tmp/`.
   - **Zero Git Leakage**: Because `data/` is strictly `.gitignore`d, putting one-off runner scripts in `data/tmp/` guarantees zero PII leaks into git history.
-  - If you later discover that logic in `data/tmp/` is generic and reusable across multiple tasks, promote and refactor it into `src/core/`.
-- **`src/core/` (Permanent Library - Zero Hardcoded Data & Zero PII)**:
-  - Stores generalized, reusable components (parsers, mathematical formulas, data models).
-  - **Zero Hardcoding Rule**: NEVER hardcode ticker-specific lists or ad-hoc data dictionaries (e.g. `{"ETHA": "Digital Assets"}`) in `src/core/`. Core must be 100% generic and rule-driven from API metadata. Any private/unlisted fund mappings must be passed in via external parameters or dependency injection (`custom_overrides`).
-  - **Mandatory Unit Tests**: Any code placed in or promoted to `src/core/` must have corresponding test coverage under `tests/` and pass `just test`.
-- **`tests/` & `tests/data/` (Testing Hygiene & Zero-PII Policy)**:
-  - **No `data/input/` Dependency**: Tests MUST NEVER read from or depend on `data/input/`.
-  - **Dedicated Fixtures**: Tests requiring file inputs must use synthetic, de-identified (de-id) fixture files placed in `tests/data/` (e.g. `tests/data/sample_ibkr.csv`) or in-memory streams.
-  - **Zero PII**: Never leak real user names, real account numbers, or personal identifiers into test files, core source code, or report specifications.
-- **`reports/` (Report Specifications & Templates ONLY)**:
+- **`src/core/` (Permanent Library - Strict Admission Criteria)**:
+  - **Permitted in `src/core/` (Time-Invariant & Jurisdiction-Agnostic ONLY)**:
+    1. Pure mathematical / algorithmic engines (e.g. Monte Carlo stochastic return generators, Quadratic Programming efficient frontier optimizers, portfolio return/XIRR calculators, statistics).
+    2. Format parsers for financial institutions (e.g. IBKR CSV parsers, Manulife export parsers).
+    3. Canonical domain models and data schemas (e.g. `Position`, `Holding`, `Portfolio`).
+    4. General API enrichment utilities (e.g. dynamic ticker resolution and ETF constituent look-through via `yfinance`).
+  - **STRICTLY PROHIBITED in `src/core/`**:
+    - **No Statutory Tax Brackets or Rates**: NEVER hardcode jurisdiction-specific tax brackets, basic personal amounts (BPA), or progressive tax formulas (e.g. CRA Ontario/Federal rates, IRS tax brackets).
+    - **No Government Pension Caps or Social Security Numbers**: NEVER hardcode CPP max, OAS base entitlements, OAS clawback thresholds, or Social Security caps. These change every calendar tax year and become invalid next year.
+    - **No Annual Account Limits**: NEVER hardcode TFSA/RRSP/401(k) annual dollar contribution limits.
+    - **No Static Ticker Dictionaries**: NEVER hardcode asset mappings (e.g. `{"ETHA": "Digital Assets"}`).
+  - **Mandatory Unit Tests**: Any code admitted to `src/core/` must have corresponding test coverage under `tests/` and pass `just test`.
+- **`reports/` (Report Specifications, Jurisdiction Knowledge & Statutory Rules)**:
   - **Master Template**: [`reports/TEMPLATE_SPEC.md`](reports/TEMPLATE_SPEC.md) serves as the canonical blueprint for creating all report specifications.
   - **Folder Structure**: Every report type has a dedicated subdirectory with a `SPEC.md` file (e.g., `reports/asset_allocation/SPEC.md`, `reports/retirement_planning/SPEC.md`).
-  - **Purpose**: Defines *HOW* to produce a report type, what the user must supply, and how the AI processes and enriches data.
-  - **Standard Architecture of `SPEC.md`**:
-    1. **Objective & Scope**: Defines business purpose, targeted use cases, and deliverable artifacts.
-    2. **Required Input**: What the user must provide (statement types in `data/input/`, account coverage, financial profile parameters, custom asset/fund overrides). Never binds to rigid internal column names or intermediate scripts.
-    3. **Process**: The complete system execution workflow (multi-source statement parsing, dynamic market data & ETF look-through enrichment via APIs/search, deterministic mathematical formulas & taxonomies, account NAV reconciliation, and step-by-step SOP).
-    4. **Output Template**: Publication-grade Markdown report skeleton for `data/output/<report_name>_report.md` and target CSV/JSON data deliverables.
-  - **Rules for SPECs**:
-    - **Zero Hardcoded Tickers/Files**: NEVER hardcode user-specific ticker lists or bind to specific file names (e.g. `IBKR.csv`). Teach dynamic resolution principles instead.
-    - **Zero Output Data**: NEVER write generated outputs, computed data, or specific user deliverables into `reports/`.
+  - **Jurisdiction Reference Docs**: Regional tax rules, government pensions, and statutory lookup guidelines belong in `reports/<report_type>/<REGION>.md` (e.g., [`reports/retirement_planning/CANADA.md`](reports/retirement_planning/CANADA.md)).
+  - **How Agents Use `reports/` for Statutory Data**:
+    - `SPEC.md` and jurisdiction guides teach the agent **where to find active-year statutory data** (e.g. official CRA/IRS publications or search prompts) and **the exact mathematical escalation/projection rules** (CPI inflation indexation, actuarial claim adjustments, RRIF minimum formulas).
+    - The agent retrieves the current tax year's baseline numbers (or accepts user overrides), applies the projection rules, and runs the simulation in `data/tmp/`.
+  - **Zero Output Data**: NEVER write generated outputs, computed data, or specific user deliverables into `reports/`.
 - **`data/output/` (All Generated Outputs & Deliverables)**:
   - **Purpose**: The destination for *ALL* generated financial outputs.
   - **Contents**: Finalized Markdown reports (e.g., `data/output/asset_allocation_report.md`), summary tables, charts, and normalized CSV exports (e.g., `data/output/normalized_holdings.csv`).
@@ -78,7 +76,7 @@ financial-bot/
 ### 4.1 Discovering Existing Report Specs:
 Before generating any report, check the `reports/` directory to see if a matching report specification exists:
 - Look for `reports/<report_type>/SPEC.md` (e.g., `reports/asset_allocation/SPEC.md`).
-- Read the specification to understand the user inputs, processing workflow (parsers, dynamic enrichment, mathematical formulas, SOP), and markdown report skeleton.
+- Read the specification and any jurisdiction reference documents (`reports/<report_type>/<REGION>.md`) to understand the required user inputs, dynamic data lookup protocols, mathematical formulas, and markdown report skeleton.
 
 ### 4.2 Handling New / Unrecognized Report Types:
 If the user requests a report type that does **not** yet have a definition under `reports/<report_type>/SPEC.md`:
@@ -91,7 +89,7 @@ If the user requests a report type that does **not** yet have a definition under
 3. Once aligned with the user, create a new specification: `reports/<report_type>/SPEC.md` modeled directly after [`reports/TEMPLATE_SPEC.md`](reports/TEMPLATE_SPEC.md).
 4. Ensure the new `SPEC.md` strictly adheres to SPEC design principles:
    - Strictly organized into: **Objective & Scope**, **Required Input**, **Process**, and **Output Template**.
-   - **No hardcoded tickers or specific file names**: Teach dynamic discovery and API enrichment rather than static dictionaries.
+   - **No hardcoded tickers or static statutory tax numbers**: Teach dynamic discovery and API/source enrichment.
    - Contains zero user output data or PII.
 5. Proceed with script creation in `data/tmp/` and report generation in `data/output/`.
 
@@ -128,17 +126,17 @@ graph TD
     A["1. Inspect Input Data & Check reports/"] --> B["2. Write Ad-hoc Script in data/tmp/"]
     B --> C["3. Execute & Verify (uv run)"]
     C --> D["4. Generate Structured Report in data/output/"]
-    D --> E["5. Promote Reusable Logic to src/core/ + Write Tests"]
+    D --> E["5. Code Quality Check & Promotion (if eligible)"]
 ```
 
 ### Step 1: Inspect & Understand
 - Check `data/input/` for statement formats, headers, currencies, account types (e.g., TFSA, RRSP, 401(k), taxable accounts, cash).
-- Check `reports/<report_type>/SPEC.md` for matching report specifications and instructions; if missing, ask the user to clarify expectations.
+- Check `reports/<report_type>/SPEC.md` and regional reference guides (e.g., `reports/retirement_planning/CANADA.md`) for matching report specifications, statutory parameters, and formulas.
 - Identify missing parameters (e.g., inflation rate assumption, retirement age, target annual spending). If critical information is missing, ask the user before guessing.
 
 ### Step 2: Write Ad-hoc Processing Script in `data/tmp/`
 - Default new code to `data/tmp/` (e.g., `data/tmp/parse_ibkr_holdings.py`, `data/tmp/retirement_sim.py`).
-- Implement clean parsing, currency normalization, and explicit mathematical formulas.
+- Implement clean parsing, dynamic market enrichment, statutory parameter loading, and explicit mathematical formulas according to `SPEC.md`.
 
 ### Step 3: Execute & Sanity Check
 - Execute the script using `uv run`.
@@ -149,9 +147,11 @@ graph TD
 - Save all raw normalized tables and CSVs to `data/output/` (e.g., `data/output/normalized_holdings.csv`).
 - Present clear summary tables, charts (using Mermaid if helpful), scenarios (Conservative / Baseline / Optimistic), and key takeaways.
 
-### Step 5: Code Promotion & Testing
-- If code in `data/tmp/` is found to be reusable, refactor it into `src/core/` (e.g., `src/core/parsers/ibkr.py`).
-- **Write comprehensive unit tests** under `tests/` for any new `src/core/` code.
+### Step 5: Promotion to `src/core/` (Strict Criteria Only)
+- **Evaluate Reusability vs. Core Eligibility**:
+  - ONLY promote code if it is **time-invariant, jurisdiction-agnostic, and purely algorithmic or a format parser** (e.g., a generic institution statement parser or mathematical solver).
+  - **NEVER promote statutory tax schedules, government pension limits, or annual policy thresholds to `src/core/`**. Keep those in `reports/<report_type>/` and execute them via `data/tmp/`.
+- **Write comprehensive unit tests** under `tests/` for any newly promoted `src/core/` module using synthetic de-identified fixtures.
 - Run `just test`, `just lint`, and `just fmt` to ensure quality.
 
 ---
