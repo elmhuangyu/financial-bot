@@ -18,20 +18,39 @@ const isLoading = ref<boolean>(false);
 const copied = ref<boolean>(false);
 const markdownContainer = ref<HTMLElement | null>(null);
 
-// Initialize Mermaid with Dark Financial Slate Theme
+// Initialize Mermaid with Dark Financial Theme & Pure SVG text rendering (htmlLabels: false)
+// Setting htmlLabels: false at both root and flowchart levels guarantees mathematical vector centering
+// without any foreignObject box clipping, line-height inflation, or Tailwind CSS conflicts.
 mermaid.initialize({
   startOnLoad: false,
+  htmlLabels: false,
   theme: "dark",
   themeVariables: {
     darkMode: true,
     background: "#0f172a",
-    primaryColor: "#22c55e",
+    mainBkg: "#1e293b",
+    nodeBorder: "#475569",
+    nodeTextColor: "#f8fafc",
+    primaryColor: "#1e293b",
     primaryTextColor: "#f8fafc",
-    primaryBorderColor: "#334155",
+    primaryBorderColor: "#475569",
     lineColor: "#38bdf8",
     secondaryColor: "#0ea5e9",
-    tertiaryColor: "#1e293b",
-    fontFamily: "Inter, system-ui, sans-serif",
+    tertiaryColor: "#0f172a",
+    tertiaryBorderColor: "#334155",
+    tertiaryTextColor: "#94a3b8",
+    edgeLabelBackground: "#0f172a",
+    fontFamily:
+      "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontSize: "13px",
+  },
+  flowchart: {
+    htmlLabels: false,
+    useMaxWidth: true,
+    nodeSpacing: 50,
+    rankSpacing: 65,
+    padding: 20,
+    curve: "basis",
   },
   securityLevel: "loose",
 });
@@ -45,6 +64,13 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
+function sanitizeMermaidCode(code: string): string {
+  let cleaned = code.trim();
+  // Standardize legacy 'graph TD/LR' to 'flowchart TD/LR' for Mermaid v11 engine consistency
+  cleaned = cleaned.replace(/^graph\s+([A-Za-z]+)/i, "flowchart $1");
+  return cleaned;
+}
+
 // Configure custom renderer for Marked to reliably isolate Mermaid blocks and Math blocks
 const renderer = new marked.Renderer();
 renderer.code = function (token: any, langParam?: string) {
@@ -55,7 +81,7 @@ renderer.code = function (token: any, langParam?: string) {
 
   if (lang === "mermaid" || lang.startsWith("mermaid")) {
     const safeCode = encodeURIComponent(text.trim());
-    return `<div class="mermaid-container my-8 p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto" data-mermaid-code="${safeCode}"></div>`;
+    return `<div class="mermaid-container not-prose my-8 p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto" data-mermaid-code="${safeCode}"></div>`;
   }
   if (lang === "math" || lang === "latex" || lang === "katex") {
     try {
@@ -63,7 +89,7 @@ renderer.code = function (token: any, langParam?: string) {
         displayMode: true,
         throwOnError: false,
       });
-      return `<div class="katex-block my-4 overflow-x-auto flex justify-center">${rendered}</div>`;
+      return `<div class="katex-block not-prose my-4 overflow-x-auto flex justify-center">${rendered}</div>`;
     } catch (e) {
       console.warn("KaTeX code block render error:", e);
     }
@@ -82,15 +108,34 @@ marked.use({ renderer });
 
 async function renderMermaidDiagrams() {
   if (!markdownContainer.value) return;
+
+  // Wait for document fonts to load completely before measuring SVG text bounding boxes
+  if (document.fonts) {
+    await document.fonts.ready;
+  }
+
   const containers = markdownContainer.value.querySelectorAll<HTMLElement>(".mermaid-container");
   for (let i = 0; i < containers.length; i++) {
     const el = containers[i];
-    const code = decodeURIComponent(el.getAttribute("data-mermaid-code") || "");
-    if (code) {
+    const rawCode = decodeURIComponent(el.getAttribute("data-mermaid-code") || "");
+    if (rawCode) {
+      const code = sanitizeMermaidCode(rawCode);
       const svgId = `mermaid-svg-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`;
       try {
         const { svg } = await mermaid.render(svgId, code);
         el.innerHTML = svg;
+
+        // Post-render safety: expand any foreignObject bounds if present
+        const svgEl = el.querySelector("svg");
+        if (svgEl) {
+          const foreignObjects = svgEl.querySelectorAll("foreignObject");
+          foreignObjects.forEach((fo) => {
+            const h = parseFloat(fo.getAttribute("height") || "0");
+            if (h > 0) {
+              fo.setAttribute("height", `${h + 16}`);
+            }
+          });
+        }
       } catch (mErr) {
         console.warn("Mermaid render error:", mErr);
         // Clean up any stray error element inserted into the DOM by Mermaid
