@@ -7,6 +7,7 @@ import mermaid from "mermaid";
 import type { A2UIMarkdownWidget } from "../../types/a2ui";
 import { useTheme } from "../../composables/useTheme";
 import { configureMermaidForTheme } from "../../utils/mermaidTheme";
+import MermaidModal from "./MermaidModal.vue";
 import { FileText, Copy, Check } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -21,6 +22,11 @@ const renderedHtml = ref<string>("");
 const isLoading = ref<boolean>(false);
 const copied = ref<boolean>(false);
 const markdownContainer = ref<HTMLElement | null>(null);
+
+// Mermaid zoom modal state
+const isModalOpen = ref<boolean>(false);
+const activeSvgHtml = ref<string>("");
+let activeContainerEl: HTMLElement | null = null;
 
 let themeObserver: MutationObserver | null = null;
 
@@ -50,7 +56,17 @@ renderer.code = function (token: any, langParam?: string) {
 
   if (lang === "mermaid" || lang.startsWith("mermaid")) {
     const safeCode = encodeURIComponent(text.trim());
-    return `<div class="mermaid-container not-prose my-8 p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto" data-mermaid-code="${safeCode}"></div>`;
+    return `<div class="mermaid-block-wrapper relative group my-8">
+      <div class="mermaid-container not-prose p-4 rounded-2xl bg-base-300/60 border border-base-300 flex justify-center overflow-x-auto cursor-zoom-in transition-colors hover:border-primary/40" data-mermaid-code="${safeCode}" title="Click to zoom and pan diagram"></div>
+      <button
+        type="button"
+        class="mermaid-zoom-btn absolute top-3 right-3 btn btn-xs sm:btn-sm btn-neutral/90 hover:btn-primary backdrop-blur-md shadow-md border border-base-content/10 gap-1.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-all duration-200 z-10 text-base-content hover:text-primary-content"
+        title="Expand & Pan Diagram"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+        <span class="text-xs font-semibold">Expand</span>
+      </button>
+    </div>`;
   }
   if (lang === "math" || lang === "latex" || lang === "katex") {
     try {
@@ -116,6 +132,45 @@ async function renderMermaidDiagrams() {
         el.innerHTML = `<pre class="text-xs font-mono text-rose-400 bg-base-300 p-4 rounded-xl overflow-x-auto">${escapeHtml(code)}</pre>`;
       }
     }
+  }
+
+  // Update active SVG modal if open
+  if (isModalOpen.value && activeContainerEl) {
+    const activeSvg = activeContainerEl.querySelector("svg");
+    if (activeSvg) {
+      activeSvgHtml.value = activeSvg.outerHTML;
+    }
+  }
+}
+
+function openModalForContainer(container: HTMLElement) {
+  const svgEl = container.querySelector("svg");
+  if (svgEl) {
+    activeContainerEl = container;
+    activeSvgHtml.value = svgEl.outerHTML;
+    isModalOpen.value = true;
+  }
+}
+
+function handleMarkdownClick(e: MouseEvent) {
+  const target = e.target as HTMLElement | null;
+  if (!target) return;
+
+  const zoomBtn = target.closest<HTMLElement>(".mermaid-zoom-btn");
+  if (zoomBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const wrapper = zoomBtn.closest<HTMLElement>(".mermaid-block-wrapper");
+    const container = wrapper?.querySelector<HTMLElement>(".mermaid-container");
+    if (container) {
+      openModalForContainer(container);
+    }
+    return;
+  }
+
+  const container = target.closest<HTMLElement>(".mermaid-container");
+  if (container && !target.closest("a, button, input, textarea, select")) {
+    openModalForContainer(container);
   }
 }
 
@@ -223,8 +278,17 @@ watch(currentTheme, async () => {
     <div
       v-else
       ref="markdownContainer"
+      @click="handleMarkdownClick"
       class="prose max-w-none text-base-content prose-headings:text-base-content prose-p:text-base-content/90 prose-strong:text-base-content prose-table:border-base-300 prose-th:bg-base-300/60 prose-th:text-base-content prose-td:text-base-content/90 prose-th:p-2.5 prose-td:p-2.5 prose-th:text-xs prose-td:text-xs prose-td:font-mono text-sm leading-relaxed"
       v-html="renderedHtml"
     ></div>
+
+    <!-- Mermaid Pan & Zoom Lightbox Modal -->
+    <MermaidModal
+      :is-open="isModalOpen"
+      :svg-html="activeSvgHtml"
+      :title="widget.title || 'Mermaid Diagram'"
+      @close="isModalOpen = false"
+    />
   </div>
 </template>

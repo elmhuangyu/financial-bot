@@ -62,7 +62,19 @@ body {
   margin-bottom: 1rem !important;
 }
 
-/* Mermaid Container Isolation & Styling */
+/* Mermaid Container & Modal Isolation & Styling */
+.mermaid-container,
+.mermaid-modal-transform {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
 .mermaid-container {
   max-width: 100%;
   overflow-x: auto;
@@ -75,10 +87,25 @@ body {
   margin: 0 auto;
 }
 
+.mermaid-modal-canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mermaid-modal-transform svg {
+  display: block;
+  margin: 0 auto;
+}
+
 .mermaid-container text,
 .mermaid-container .nodeLabel,
 .mermaid-container .label text,
-.mermaid-container .edgeLabel text {
+.mermaid-container .edgeLabel text,
+.mermaid-modal-transform text,
+.mermaid-modal-transform .nodeLabel,
+.mermaid-modal-transform .label text,
+.mermaid-modal-transform .edgeLabel text {
   font-family:
     Inter,
     system-ui,
@@ -90,7 +117,8 @@ body {
   font-size: 13px !important;
 }
 
-.mermaid-container .edgeLabel text {
+.mermaid-container .edgeLabel text,
+.mermaid-modal-transform .edgeLabel text {
   font-size: 11px !important;
   font-weight: 500 !important;
 }
@@ -99,29 +127,37 @@ body {
 .mermaid-container .node rect,
 .mermaid-container .node polygon,
 .mermaid-container .node circle,
-.mermaid-container .node ellipse {
+.mermaid-container .node ellipse,
+.mermaid-modal-transform .node rect,
+.mermaid-modal-transform .node polygon,
+.mermaid-modal-transform .node circle,
+.mermaid-modal-transform .node ellipse {
   stroke-width: 1.5px !important;
   rx: 8px !important;
   ry: 8px !important;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.22));
 }
 
-.mermaid-container .edgePath .path {
+.mermaid-container .edgePath .path,
+.mermaid-modal-transform .edgePath .path {
   stroke-width: 2px !important;
 }
 
 /* Pie Chart Typography & Polish */
-.mermaid-container .pieTitleText {
+.mermaid-container .pieTitleText,
+.mermaid-modal-transform .pieTitleText {
   font-weight: 700 !important;
   font-size: 15px !important;
 }
 
-.mermaid-container .legend text {
+.mermaid-container .legend text,
+.mermaid-modal-transform .legend text {
   font-size: 12px !important;
   font-weight: 500 !important;
 }
 
-.mermaid-container .slice {
+.mermaid-container .slice,
+.mermaid-modal-transform .slice {
   font-weight: 600 !important;
   font-size: 13px !important;
 }
