@@ -17,6 +17,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.8",
     "chart.js": "^4.4.8",
+    "culori": "^4.0.2",
     "hono": "^4.7.2",
     "katex": "^0.18.4",
     "lucide-vue-next": "^0.475.0",
@@ -28,6 +29,7 @@
     "vue-chartjs": "^5.3.2"
   },
   "devDependencies": {
+    "@types/culori": "^4.0.1",
     "@types/katex": "^0.16.8",
     "@types/node": "^22.13.5",
     "@types/papaparse": "^5.3.15",

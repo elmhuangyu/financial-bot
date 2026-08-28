@@ -62,7 +62,7 @@ body {
   margin-bottom: 1rem !important;
 }
 
-/* Mermaid Container Isolation & Centering */
+/* Mermaid Container Isolation & Styling */
 .mermaid-container {
   max-width: 100%;
   overflow-x: auto;
@@ -79,10 +79,49 @@ body {
 .mermaid-container .nodeLabel,
 .mermaid-container .label text,
 .mermaid-container .edgeLabel text {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif !important;
   font-size: 13px !important;
 }
 
 .mermaid-container .edgeLabel text {
   font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+/* Crisp high-contrast strokes and rounded nodes */
+.mermaid-container .node rect,
+.mermaid-container .node polygon,
+.mermaid-container .node circle,
+.mermaid-container .node ellipse {
+  stroke-width: 1.5px !important;
+  rx: 8px !important;
+  ry: 8px !important;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.22));
+}
+
+.mermaid-container .edgePath .path {
+  stroke-width: 2px !important;
+}
+
+/* Pie Chart Typography & Polish */
+.mermaid-container .pieTitleText {
+  font-weight: 700 !important;
+  font-size: 15px !important;
+}
+
+.mermaid-container .legend text {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.mermaid-container .slice {
+  font-weight: 600 !important;
+  font-size: 13px !important;
 }

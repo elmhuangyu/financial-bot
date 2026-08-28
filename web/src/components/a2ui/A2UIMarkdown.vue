@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { marked } from "marked";
 import katex from "katex";
 import markedKatex from "marked-katex-extension";
 import mermaid from "mermaid";
 import type { A2UIMarkdownWidget } from "../../types/a2ui";
+import { useTheme } from "../../composables/useTheme";
+import { configureMermaidForTheme } from "../../utils/mermaidTheme";
 import { FileText, Copy, Check } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -12,48 +14,15 @@ const props = defineProps<{
   runId: string;
 }>();
 
+const { currentTheme } = useTheme();
+
 const rawContent = ref<string>("");
 const renderedHtml = ref<string>("");
 const isLoading = ref<boolean>(false);
 const copied = ref<boolean>(false);
 const markdownContainer = ref<HTMLElement | null>(null);
 
-// Initialize Mermaid with Dark Financial Theme & Pure SVG text rendering (htmlLabels: false)
-// Setting htmlLabels: false at both root and flowchart levels guarantees mathematical vector centering
-// without any foreignObject box clipping, line-height inflation, or Tailwind CSS conflicts.
-mermaid.initialize({
-  startOnLoad: false,
-  htmlLabels: false,
-  theme: "dark",
-  themeVariables: {
-    darkMode: true,
-    background: "#0f172a",
-    mainBkg: "#1e293b",
-    nodeBorder: "#475569",
-    nodeTextColor: "#f8fafc",
-    primaryColor: "#1e293b",
-    primaryTextColor: "#f8fafc",
-    primaryBorderColor: "#475569",
-    lineColor: "#38bdf8",
-    secondaryColor: "#0ea5e9",
-    tertiaryColor: "#0f172a",
-    tertiaryBorderColor: "#334155",
-    tertiaryTextColor: "#94a3b8",
-    edgeLabelBackground: "#0f172a",
-    fontFamily:
-      "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    fontSize: "13px",
-  },
-  flowchart: {
-    htmlLabels: false,
-    useMaxWidth: true,
-    nodeSpacing: 50,
-    rankSpacing: 65,
-    padding: 20,
-    curve: "basis",
-  },
-  securityLevel: "loose",
-});
+let themeObserver: MutationObserver | null = null;
 
 function escapeHtml(str: string): string {
   return str
@@ -95,7 +64,7 @@ renderer.code = function (token: any, langParam?: string) {
     }
   }
   const escaped = typeof token === "object" && token?.escaped ? text : escapeHtml(text);
-  return `<pre class="bg-base-300 p-4 rounded-xl overflow-x-auto text-xs font-mono text-slate-200 my-4"><code>${escaped}</code></pre>`;
+  return `<pre class="bg-base-300 p-4 rounded-xl overflow-x-auto text-xs font-mono text-base-content my-4"><code>${escaped}</code></pre>`;
 };
 
 marked.use(
@@ -113,6 +82,9 @@ async function renderMermaidDiagrams() {
   if (document.fonts) {
     await document.fonts.ready;
   }
+
+  // Dynamically re-configure mermaid with active DaisyUI theme colors
+  configureMermaidForTheme();
 
   const containers = markdownContainer.value.querySelectorAll<HTMLElement>(".mermaid-container");
   for (let i = 0; i < containers.length; i++) {
@@ -189,6 +161,28 @@ function copyContent() {
 
 onMounted(() => {
   loadMarkdownContent();
+
+  if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+    themeObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === "attributes" && m.attributeName === "data-theme") {
+          renderMermaidDiagrams();
+          break;
+        }
+      }
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+  }
+});
+
+onBeforeUnmount(() => {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
 });
 
 watch(
@@ -198,6 +192,11 @@ watch(
   },
   { deep: true },
 );
+
+watch(currentTheme, async () => {
+  await nextTick();
+  await renderMermaidDiagrams();
+});
 </script>
 
 <template>
