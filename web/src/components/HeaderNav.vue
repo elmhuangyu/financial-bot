@@ -48,7 +48,7 @@ const currentRunBadge = computed(() => {
               Financial Intelligence
             </h1>
             <span
-              class="badge badge-sm badge-primary badge-outline font-semibold max-w-[200px] truncate"
+              class="badge badge-sm badge-tag-sky font-semibold max-w-[200px] truncate"
               :title="currentRunBadge"
             >
               {{ currentRunBadge }}
@@ -72,80 +72,79 @@ const currentRunBadge = computed(() => {
           <RefreshCw class="w-4 h-4" />
         </button>
 
-        <!-- Privacy Toggle -->
-        <button
-          @click="togglePrivacy"
-          class="btn btn-sm gap-1.5 font-medium transition-all"
-          :class="
-            isPrivacyMode
-              ? 'btn-secondary shadow-sm shadow-secondary/20'
-              : 'btn-ghost bg-base-100/60 hover:bg-base-300 border border-base-300 text-base-content/80 hover:text-base-content'
-          "
-          title="Toggle Privacy Mode (Mask Balances)"
-        >
-          <component :is="isPrivacyMode ? EyeOff : Eye" class="w-4 h-4" />
-          <span class="text-xs">{{ isPrivacyMode ? "Hidden" : "Privacy" }}</span>
-        </button>
-
-        <!-- Dual Currency Switcher -->
-        <div class="join bg-base-300 p-0.5 rounded-lg border border-base-300">
+        <!-- Currency Selector -->
+        <div class="join bg-base-300 rounded-lg p-0.5 border border-base-300">
           <button
-            @click="setCurrency('USD')"
-            class="join-item btn btn-xs font-semibold px-2.5 transition-all"
+            v-for="curr in ['USD', 'CAD'] as const"
+            :key="curr"
+            @click="setCurrency(curr)"
+            class="join-item btn btn-xs border-none font-mono text-xs"
             :class="
-              currentCurrency === 'USD'
-                ? 'btn-primary text-white shadow'
-                : 'btn-ghost text-base-content/60 hover:text-base-content'
+              currentCurrency === curr
+                ? 'btn-primary text-white shadow-xs font-bold'
+                : 'btn-ghost text-base-content/70 hover:text-base-content'
             "
           >
-            USD ($)
-          </button>
-          <button
-            @click="setCurrency('CAD')"
-            class="join-item btn btn-xs font-semibold px-2.5 transition-all"
-            :class="
-              currentCurrency === 'CAD'
-                ? 'btn-primary text-white shadow'
-                : 'btn-ghost text-base-content/60 hover:text-base-content'
-            "
-          >
-            CAD (C$)
+            {{ curr }}
           </button>
         </div>
 
-        <!-- DaisyUI Official Theme Controller Dropdown -->
+        <!-- Privacy Mode Toggle -->
+        <button
+          @click="togglePrivacy"
+          class="btn btn-sm btn-ghost btn-square text-base-content/70 hover:text-base-content"
+          :class="{ 'text-warning': isPrivacyMode }"
+          :title="isPrivacyMode ? 'Disable Privacy Mode' : 'Enable Privacy Mode (Mask Numbers)'"
+        >
+          <EyeOff v-if="isPrivacyMode" class="w-4 h-4" />
+          <Eye v-else class="w-4 h-4" />
+        </button>
+
+        <!-- Theme Selector Dropdown -->
         <div class="dropdown dropdown-end">
-          <div
+          <label
             tabindex="0"
-            role="button"
-            class="btn btn-ghost btn-sm text-base-content/70 hover:text-base-content gap-1.5 font-normal text-xs"
+            class="btn btn-sm btn-ghost btn-square text-base-content/70 hover:text-base-content"
+            title="Select Theme"
           >
-            <Palette class="w-4 h-4 text-primary" />
-            <span class="hidden md:inline font-medium">Theme</span>
-            <svg
-              width="10px"
-              height="10px"
-              class="inline-block h-2 w-2 fill-current opacity-60 ml-0.5"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 2048 2048"
-            >
-              <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
-            </svg>
-          </div>
+            <Palette class="w-4 h-4" />
+          </label>
           <ul
-            tabindex="-1"
-            class="dropdown-content bg-base-300 rounded-box z-50 w-48 p-2 shadow-2xl border border-base-300 menu text-xs gap-1 mt-2"
+            tabindex="0"
+            class="dropdown-content z-50 menu p-2 shadow-2xl bg-base-200 border border-base-300 rounded-box w-52 text-xs space-y-1 mt-2 font-sans"
           >
-            <li v-for="t in themes" :key="t.id">
-              <input
-                type="radio"
-                name="theme-dropdown"
-                class="theme-controller btn btn-sm btn-block btn-ghost justify-start text-xs font-normal"
-                :aria-label="t.label"
-                :value="t.id"
-                :checked="currentTheme === t.id"
-                @change="setTheme(t.id)"
-              />
+            <li class="menu-title text-[10px] uppercase font-bold text-base-content/40 px-2 py-1">
+              Select Theme
+            </li>
+            <li v-for="theme in themes" :key="theme.id">
+              <button
+                @click="setTheme(theme.id)"
+                class="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-base-300 transition-colors"
+                :class="{ 'active font-bold text-primary': currentTheme === theme.id }"
+              >
+                <span>{{ theme.label }}</span>
+                <span
+                  class="w-3 h-3 rounded-full border border-base-content/20"
+                  :style="{
+                    backgroundColor:
+                      theme.id === 'business'
+                        ? '#1c232b'
+                        : theme.id === 'emerald'
+                          ? '#66cc8a'
+                          : theme.id === 'forest'
+                            ? '#171212'
+                            : theme.id === 'night'
+                              ? '#0f172a'
+                              : theme.id === 'dim'
+                                ? '#2a303c'
+                                : theme.id === 'nord'
+                                  ? '#eceff4'
+                                  : theme.id === 'corporate'
+                                    ? '#ffffff'
+                                    : '#f2f2f2',
+                  }"
+                ></span>
+              </button>
             </li>
           </ul>
         </div>
