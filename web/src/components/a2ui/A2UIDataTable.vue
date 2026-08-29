@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import type { A2UIDataTableWidget, A2UIDataTableColumn } from "../../types/a2ui";
 import { useCurrency } from "../../composables/useCurrency";
 import { usePrivacy } from "../../composables/usePrivacy";
+import { resolveBadgeClass } from "../../utils/badgeHelper";
 import { Search, RotateCcw, Download, Table2 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -146,33 +147,6 @@ const processedRows = computed(() => {
   });
 });
 
-function resolveBadgeColor(val: string, col: A2UIDataTableColumn): string {
-  if (col.badgeColorMap?.[val]) {
-    return col.badgeColorMap[val];
-  }
-  const clean = val.trim().toUpperCase();
-  // Financial Grades (A+, A, A-, B+, B, C, D, etc.)
-  if (clean === "A+" || clean === "AAA")
-    return "badge-success text-success-content font-bold shadow-sm";
-  if (clean === "A" || clean === "AA") return "badge-success bg-emerald-600 text-white font-bold";
-  if (clean === "A-" || clean === "BBB") return "badge-accent text-accent-content font-semibold";
-  if (clean.startsWith("B+") || clean === "B")
-    return "badge-warning text-warning-content font-semibold";
-  if (clean.startsWith("B-") || clean.startsWith("C"))
-    return "badge-error text-error-content font-semibold";
-  if (clean.startsWith("D") || clean.startsWith("F")) return "badge-error font-bold";
-
-  // Common Tax & Account Badges
-  if (clean.includes("TFSA") || clean.includes("TAX-FREE"))
-    return "badge-success badge-outline font-semibold";
-  if (clean.includes("RRSP") || clean.includes("TAX-DEFERRED") || clean.includes("401K"))
-    return "badge-info badge-outline font-semibold";
-  if (clean.includes("TAXABLE") || clean.includes("NON-REG"))
-    return "badge-warning badge-outline font-semibold";
-
-  return "badge-primary badge-outline font-medium";
-}
-
 function getBadgeList(row: any, col: any): string[] {
   const val = row[col.key];
   if (val === undefined || val === null || val === "") return [];
@@ -211,7 +185,10 @@ function exportCsv() {
     ...processedRows.value.map((r) =>
       cols.map((c) => `"${(r[c.key] || "").toString().replace(/"/g, '""')}"`).join(","),
     ),
-  ].join("\n");
+  ].join(
+    "\
+",
+  );
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -355,8 +332,8 @@ function exportCsv() {
                 <span
                   v-for="b in getBadgeList(row, col)"
                   :key="b"
-                  class="badge badge-sm font-semibold whitespace-nowrap px-2 py-0.5"
-                  :class="resolveBadgeColor(b, col)"
+                  class="badge badge-xs font-semibold whitespace-nowrap px-2 py-0.5"
+                  :class="resolveBadgeClass(b, col)"
                 >
                   {{ b }}
                 </span>

@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import type { A2UIHoldingsTableWidget } from "../../types/a2ui";
 import { useCurrency } from "../../composables/useCurrency";
 import { usePrivacy } from "../../composables/usePrivacy";
+import { resolveBadgeClass } from "../../utils/badgeHelper";
 import { Search, Combine, RotateCcw, Download, Table2 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -280,7 +281,10 @@ function exportCsv() {
     ...processedRows.value.map((r) =>
       cols.map((c) => `"${(r[c.key] || "").toString().replace(/"/g, '""')}"`).join(","),
     ),
-  ].join("\n");
+  ].join(
+    "\
+",
+  );
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -434,7 +438,7 @@ function exportCsv() {
                 class="flex flex-col gap-1 font-sans py-1 min-w-[140px]"
               >
                 <div class="flex items-center gap-1.5">
-                  <span class="badge badge-xs badge-info font-bold shrink-0"
+                  <span class="badge badge-xs badge-tag-sky font-bold shrink-0 px-2 py-0.5"
                     >{{ row.account_count }} Accounts</span
                   >
                 </div>
@@ -457,12 +461,8 @@ function exportCsv() {
                 <span
                   v-for="b in getBadgeList(row, col)"
                   :key="b"
-                  class="badge badge-xs font-semibold whitespace-nowrap"
-                  :class="
-                    col.badgeColorMap?.[b] ||
-                    col.badgeColorMap?.[formatBadgeLabel(b, col)] ||
-                    'badge-neutral badge-outline'
-                  "
+                  class="badge badge-xs font-semibold whitespace-nowrap px-2 py-0.5"
+                  :class="resolveBadgeClass(b, col)"
                   :title="b"
                 >
                   {{ formatBadgeLabel(b, col) }}
