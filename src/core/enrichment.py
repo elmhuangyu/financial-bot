@@ -42,6 +42,7 @@ IBKR_TO_YFINANCE_MAP: dict[str, str] = {
   "BRK B": "BRK-B",
   "CCO": "CCO.TO",  # Cameco Corporation (TSX)
   "ENB": "ENB.TO",  # Enbridge Inc. (TSX)
+  "SPYM": "SPLG",  # SPDR Portfolio S&P 500 ETF
 }
 
 
@@ -83,7 +84,10 @@ class HoldingEnricher:
       try:
         t = yf.Ticker(yf_sym)
         data = t.info
-        name = data.get("shortName") or data.get("longName") or sym
+        short_name = data.get("shortName") or ""
+        long_name = data.get("longName") or ""
+        name = short_name or long_name or sym
+        full_name = f"{short_name} {long_name}".strip()
         quote_type = (data.get("quoteType") or "EQUITY").upper()
         category = data.get("category") or ""
         sector = data.get("sector") or ""
@@ -107,20 +111,20 @@ class HoldingEnricher:
         except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
           pass
 
-        # 2. Strict fallback only if funds_data is unavailable but legal name explicitly specifies ETF/Index Fund
+        # 2. Strict fallback only if funds_data is unavailable but legal name explicitly specifies ETF/Index Fund/Trust
         if (
           not is_fund
           and quote_type == "EQUITY"
-          and re.search(r"\b(ETF|Index Fund)\b", name, re.IGNORECASE)
+          and re.search(r"\b(ETF|Index Fund|Trust)\b", full_name, re.IGNORECASE)
         ):
           quote_type = "ETF"
           is_fund = True
 
-        if quote_type == "ETF" and not category and not sector:
-          if any(k in name.lower() for k in ["s&p 500", "s&p500", "spdr portfolio s&p"]):
+        if (quote_type == "ETF" or is_fund) and not category and not sector:
+          if any(k in full_name.lower() for k in ["s&p 500", "s&p500", "spdr portfolio s&p"]):
             category = "Large Blend"
             industry = "S&P 500 Index"
-          elif "nasdaq" in name.lower() or "qqq" in name.lower():
+          elif "nasdaq" in full_name.lower() or "qqq" in full_name.lower():
             category = "Large Growth"
             industry = "NASDAQ 100 Index"
 

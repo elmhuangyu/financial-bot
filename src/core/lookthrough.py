@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 import yfinance as yf
+from yfinance.exceptions import YFException
 
 from src.core.enrichment import IBKR_TO_YFINANCE_MAP, normalize_sector_name
 from src.core.models import EnrichedHolding
@@ -60,21 +61,27 @@ class ETFLookThroughEngine:
       t = yf.Ticker(yf_sym)
       fd = t.funds_data
       if fd:
-        if hasattr(fd, "sector_weightings") and fd.sector_weightings:
-          for raw_sec, weight in fd.sector_weightings.items():
-            if weight and weight > 0:
-              norm_sec = normalize_sector_name(raw_sec)
-              profile.sector_weights[norm_sec] = float(weight)
+        try:
+          if hasattr(fd, "sector_weightings") and fd.sector_weightings:
+            for raw_sec, weight in fd.sector_weightings.items():
+              if weight and weight > 0:
+                norm_sec = normalize_sector_name(raw_sec)
+                profile.sector_weights[norm_sec] = float(weight)
+        except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
+          pass
 
-        if hasattr(fd, "top_holdings") and fd.top_holdings is not None:
-          th_df = fd.top_holdings
-          for constituent_sym, row in th_df.iterrows():
-            c_sym = str(constituent_sym)
-            c_name = str(row.get("Name", c_sym))
-            c_weight = float(row.get("Holding Percent", 0.0))
-            if c_weight > 0:
-              profile.top_holdings[c_sym] = (c_name, c_weight)
-    except KeyError, ValueError, OSError, RuntimeError:
+        try:
+          if hasattr(fd, "top_holdings") and fd.top_holdings is not None:
+            th_df = fd.top_holdings
+            for constituent_sym, row in th_df.iterrows():
+              c_sym = str(constituent_sym)
+              c_name = str(row.get("Name", c_sym))
+              c_weight = float(row.get("Holding Percent", 0.0))
+              if c_weight > 0:
+                profile.top_holdings[c_sym] = (c_name, c_weight)
+        except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
+          pass
+    except KeyError, ValueError, OSError, RuntimeError, AttributeError, TypeError, YFException:
       pass
 
     self._etf_cache[symbol] = profile
