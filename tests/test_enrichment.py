@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.core.enrichment import HoldingEnricher
+from src.core.enrichment import IBKR_TO_YFINANCE_MAP, HoldingEnricher
 from src.core.models import Account, Position, TaxTreatment
 
 
@@ -141,3 +141,40 @@ def test_enrich_etf_with_equity_quote_type():
   assert enriched.asset_subclass == "Broad Index ETF"
   assert enriched.sector == "Broad Market / Large Blend"
   assert enriched.industry == "S&P 500 Index"
+
+
+def test_ibkr_to_yfinance_ticker_map():
+  assert IBKR_TO_YFINANCE_MAP["CCO"] == "CCO.TO"
+  assert IBKR_TO_YFINANCE_MAP["BRK B"] == "BRK-B"
+
+  enricher = HoldingEnricher()
+  enricher._yf_cache["CCO"] = {
+    "name": "Cameco Corporation",
+    "quoteType": "EQUITY",
+    "category": "",
+    "sector": "Energy",
+    "industry": "Uranium",
+    "country": "Canada",
+    "fundFamily": "",
+    "is_fund": False,
+  }
+
+  pos = Position(
+    source="IBKR",
+    account_id="ACC1",
+    symbol="CCO",
+    asset_category="Stocks",
+    currency="CAD",
+    quantity=100,
+    cost_basis=5000.0,
+    close_price=60.0,
+    market_value=6000.0,
+    unrealized_pl=1000.0,
+  )
+
+  enriched = enricher.enrich_position(pos, cad_to_usd=0.75)
+  assert enriched.asset_name == "Cameco Corporation"
+  assert enriched.asset_class == "Canadian Equities"
+  assert enriched.asset_subclass == "Individual Stock"
+  assert enriched.sector == "Energy"
+  assert enriched.industry == "Uranium"

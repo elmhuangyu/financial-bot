@@ -37,6 +37,13 @@ GICS_SECTOR_KEYWORDS = {
   "digital assets": "Digital Assets",
 }
 
+# IBKR to Yahoo Finance ticker mapping for special cases (e.g. Canadian TSX tickers, dual share classes)
+IBKR_TO_YFINANCE_MAP: dict[str, str] = {
+  "BRK B": "BRK-B",
+  "CCO": "CCO.TO",  # Cameco Corporation (TSX)
+  "ENB": "ENB.TO",  # Enbridge Inc. (TSX)
+}
+
 
 def normalize_sector_name(raw_name: str | None) -> str:
   if not raw_name:
@@ -55,9 +62,11 @@ class HoldingEnricher:
     self,
     account_map: dict[str, Account] | None = None,
     custom_overrides: dict[str, dict[str, str]] | None = None,
+    ticker_map: dict[str, str] | None = None,
   ):
     self.account_map = account_map or {}
     self.custom_overrides = custom_overrides or {}
+    self.ticker_map = {**IBKR_TO_YFINANCE_MAP, **(ticker_map or {})}
     self._yf_cache: dict[str, dict] = {}
 
   def fetch_ticker_metadata(self, symbols: set[str]) -> dict[str, dict]:
@@ -69,11 +78,7 @@ class HoldingEnricher:
     ]
 
     for sym in needed:
-      yf_sym = sym
-      if sym == "BRK B":
-        yf_sym = "BRK-B"
-      elif sym in ["CCO", "ENB"] or (len(sym) <= 4 and sym.isalpha() and sym.isupper() and False):
-        pass
+      yf_sym = self.ticker_map.get(sym, sym)
 
       try:
         t = yf.Ticker(yf_sym)
@@ -215,7 +220,12 @@ class HoldingEnricher:
         industry = raw_industry or "Digital Assets Trust"
 
       # Rule: Equity / ETF Regional Classification
-      elif country == "Canada" or pos.symbol.endswith(".TO") or curr == "CAD":
+      elif (
+        country == "Canada"
+        or pos.symbol.endswith(".TO")
+        or self.ticker_map.get(pos.symbol, "").endswith(".TO")
+        or curr == "CAD"
+      ):
         asset_class = "Canadian Equities"
         if info.get("is_fund") or quote_type in ["ETF", "MUTUALFUND"]:
           asset_subclass = "ETF"

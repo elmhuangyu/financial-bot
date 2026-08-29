@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import yfinance as yf
 
-from src.core.enrichment import normalize_sector_name
+from src.core.enrichment import IBKR_TO_YFINANCE_MAP, normalize_sector_name
 from src.core.models import EnrichedHolding
 
 
@@ -42,8 +42,10 @@ class ETFLookThroughEngine:
   def __init__(
     self,
     custom_fund_profiles: dict[str, ETFConstituentProfile] | None = None,
+    ticker_map: dict[str, str] | None = None,
   ):
     self.custom_fund_profiles = custom_fund_profiles or {}
+    self.ticker_map = {**IBKR_TO_YFINANCE_MAP, **(ticker_map or {})}
     self._etf_cache: dict[str, ETFConstituentProfile] = dict(self.custom_fund_profiles)
 
   def get_etf_profile(self, symbol: str) -> ETFConstituentProfile:
@@ -51,10 +53,11 @@ class ETFLookThroughEngine:
       return self._etf_cache[symbol]
 
     profile = ETFConstituentProfile(symbol=symbol)
+    yf_sym = self.ticker_map.get(symbol, symbol)
 
     # Dynamically query Yahoo Finance for ETF funds_data
     try:
-      t = yf.Ticker(symbol)
+      t = yf.Ticker(yf_sym)
       fd = t.funds_data
       if fd:
         if hasattr(fd, "sector_weightings") and fd.sector_weightings:
